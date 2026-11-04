@@ -5,14 +5,17 @@ YouTube等から音源をダウンロードし、正方形ジャケット画像�
 ブラウザ拡張機能 と CUI の2つのインターフェースに対応しています。
 
 <p align="center">
-  <img src="extension/assets/screenshot1.png" width="340" alt="ダウンロード画面">
+  <img src="extension/assets/screenshot1.png" width="360" alt="ダウンロード画面">
   &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="extension/assets/screenshot2.png" width="340" alt="タスク一覧画面">
+  <img src="extension/assets/screenshot2.png" width="360" alt="タスク一覧画面">
 </p>
+
 <p align="center">
-  <img src="extension/assets/screenshot3.png" width="380" alt="設定画面">
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="extension/assets/sample.png" width="380" alt="サンプル画面">
+  <img src="extension/assets/screenshot3.png" alt="設定画面">
+</p>
+
+<p align="center">
+  <img src="extension/assets/sample.png" alt="サンプル画面">
 </p>
 
 ---
