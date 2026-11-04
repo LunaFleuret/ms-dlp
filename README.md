@@ -4,6 +4,12 @@ YouTube等から音源をダウンロードし、正方形ジャケット画像�
 
 ブラウザ拡張機能 と CUI の2つのインターフェースに対応しています。
 
+<p align="center">
+  <img src="extension/assets/screenshot1.png" width="340" alt="ダウンロード画面">
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="extension/assets/screenshot2.png" width="340" alt="タスク一覧画面">
+</p>
+
 ---
 
 ## 主な特徴
@@ -39,6 +45,7 @@ ms-dlp/
 │   ├── popup.html/.js/.css   <- ポップアップ操作・タスク進捗管理UI
 │   ├── options.html/.js/.css <- ダウンロード環境設定画面 (Options)
 │   ├── background.js         <- サービスワーカー (Native Messaging通信)
+│   ├── assets/               <- UIスクリーンショット画像等
 │   └── icons/                <- アイコン画像
 ├── native_host/              <- ネイティブメッセージングホスト (Python)
 │   ├── host.py               <- ブラウザとの stdio 通信・タスク管理
