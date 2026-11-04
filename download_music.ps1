@@ -6,6 +6,7 @@ $DefaultConfig = [ordered]@{
     "audio_format"          = "m4a"
     "audio_quality"         = "0"
     "cover_mode_non_square" = "stretch"
+    "auto_crop_shorts"      = $true
     "embed_lyrics"          = $true
     "concurrent_fragments"  = 5
     "output_folder"         = "output"
@@ -747,6 +748,11 @@ function Main {
                 if ($thumbFile) {
                     $coverOut = Join-Path $sessionDir "cover_square.jpg"
                     $nonSquareMode = $Script:Config["cover_mode_non_square"]
+                    $autoCrop = if ($null -ne $Script:Config["auto_crop_shorts"]) { [bool]$Script:Config["auto_crop_shorts"] } else { $true }
+                    if ($url -match "youtube\.com/shorts/" -and $autoCrop) {
+                        Write-Host "    [Shorts] YouTube Shorts detected: Automatically applying 'crop' mode." -ForegroundColor Cyan
+                        $nonSquareMode = "crop"
+                    }
 
                     $processedCover = Format-CoverArt -FfmpegPath $tools.Ffmpeg `
                                                       -FfprobePath $tools.Ffprobe `

@@ -18,6 +18,7 @@ native_host/tasks/*
 # Python cache
 __pycache__/
 *.pyc
+.sentry-native/
 
 # Download outputs & temporary files
 output/*

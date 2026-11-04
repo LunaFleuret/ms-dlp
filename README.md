@@ -9,12 +9,17 @@ YouTube等から音源をダウンロードし、正方形ジャケット画像�
   &nbsp;&nbsp;&nbsp;&nbsp;
   <img src="extension/assets/screenshot2.png" width="340" alt="タスク一覧画面">
 </p>
+<p align="center">
+  <img src="extension/assets/screenshot3.png" width="380" alt="設定画面">
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="extension/assets/sample.png" width="380" alt="サンプル画面">
+</p>
 
 ---
 
 ## 主な特徴
 
-- **5並列分割ダウンロード**: 大容量の楽曲や長尺の音源も高速かつ安定して保存
+- **5並列分割ダウンロード**: 長尺動画も高速安定保存
 - **オリジナルメタデータの保持**: 取得先のタイトルおよびアーティスト情報（投稿者/チャンネル名）を加工せずタグ・ファイル名に忠実に反映、保存します
 - **二段階ハイブリッド歌詞埋め込み**:
   1. YouTubeの公式字幕（日本語優先）から歌詞を自動抽出・整形

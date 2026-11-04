@@ -138,46 +138,15 @@ def handle_open_output_dir():
             
         target_path.mkdir(parents=True, exist_ok=True)
         
-        CREATE_NO_WINDOW = 0x08000000
         opened = False
         
         if sys.platform == "win32":
-            # 1. Priority: Files Preview (files-preview.exe)
             try:
-                subprocess.Popen(["files-preview.exe", str(target_path)], creationflags=CREATE_NO_WINDOW)
+                os.startfile(str(target_path))
                 opened = True
             except Exception:
-                pass
-                
-            # 2. Priority: Files Stable (files-stable.exe)
-            if not opened:
-                try:
-                    subprocess.Popen(["files-stable.exe", str(target_path)], creationflags=CREATE_NO_WINDOW)
-                    opened = True
-                except Exception:
-                    pass
-
-            # 3. Priority: Files URI Protocol
-            if not opened:
-                for uri_scheme in ["files-preview-uwp:", "files-uwp:"]:
-                    try:
-                        subprocess.Popen(
-                            ["cmd.exe", "/c", "start", "", f"{uri_scheme}{target_path}"],
-                            creationflags=CREATE_NO_WINDOW
-                        )
-                        opened = True
-                        break
-                    except Exception:
-                        pass
-                        
-            # 4. Fallback: OS Explorer
-            if not opened:
-                try:
-                    os.startfile(str(target_path))
-                    opened = True
-                except Exception:
-                    subprocess.Popen(["explorer.exe", str(target_path)])
-                    opened = True
+                subprocess.Popen(["explorer.exe", str(target_path)])
+                opened = True
         else:
             if sys.platform == "darwin":
                 subprocess.Popen(["open", str(target_path)])

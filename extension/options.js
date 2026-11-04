@@ -2,6 +2,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const defaultAudioFormat = document.getElementById("defaultAudioFormat");
   const defaultCoverMode = document.getElementById("defaultCoverMode");
   const defaultEmbedLyrics = document.getElementById("defaultEmbedLyrics");
+  const defaultAutoCropShorts = document.getElementById("defaultAutoCropShorts");
   const defaultParallel = document.getElementById("defaultParallel");
 
   const testConnBtn = document.getElementById("testConnBtn");
@@ -14,11 +15,17 @@ document.addEventListener("DOMContentLoaded", () => {
     "audioFormat",
     "coverMode",
     "embedLyrics",
+    "autoCropShorts",
     "parallelFragments"
   ], (items) => {
     if (items.audioFormat) defaultAudioFormat.value = items.audioFormat;
     if (items.coverMode) defaultCoverMode.value = items.coverMode;
     if (typeof items.embedLyrics === "boolean") defaultEmbedLyrics.checked = items.embedLyrics;
+    if (typeof items.autoCropShorts === "boolean") {
+      defaultAutoCropShorts.checked = items.autoCropShorts;
+    } else {
+      defaultAutoCropShorts.checked = true;
+    }
     if (typeof items.parallelFragments === "boolean") defaultParallel.checked = items.parallelFragments;
   });
 
@@ -46,6 +53,7 @@ document.addEventListener("DOMContentLoaded", () => {
       audioFormat: defaultAudioFormat.value,
       coverMode: defaultCoverMode.value,
       embedLyrics: defaultEmbedLyrics.checked,
+      autoCropShorts: defaultAutoCropShorts.checked,
       parallelFragments: defaultParallel.checked
     };
 

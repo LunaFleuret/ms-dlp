@@ -74,6 +74,8 @@ def main():
                 cfg["audio_format"] = options["audio_format"]
             if "cover_mode_non_square" in options:
                 cfg["cover_mode_non_square"] = options["cover_mode_non_square"]
+            if "auto_crop_shorts" in options:
+                cfg["auto_crop_shorts"] = bool(options["auto_crop_shorts"])
             if "embed_lyrics" in options:
                 cfg["embed_lyrics"] = bool(options["embed_lyrics"])
             if "concurrent_fragments" in options:

@@ -13,6 +13,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const audioFormatSelect = document.getElementById("audioFormat");
   const coverModeSelect = document.getElementById("coverMode");
   const embedLyricsCheckbox = document.getElementById("embedLyrics");
+  const autoCropShortsCheckbox = document.getElementById("autoCropShorts");
 
   const downloadBtn = document.getElementById("downloadBtn");
   const btnText = downloadBtn.querySelector(".btn-text");
@@ -73,11 +74,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Load saved preferences
   chrome.storage.local.get(
-    ["audioFormat", "coverMode", "embedLyrics"],
+    ["audioFormat", "coverMode", "embedLyrics", "autoCropShorts"],
     (data) => {
       if (data.audioFormat) audioFormatSelect.value = data.audioFormat;
       if (data.coverMode) coverModeSelect.value = data.coverMode;
       if (typeof data.embedLyrics === "boolean") embedLyricsCheckbox.checked = data.embedLyrics;
+      if (typeof data.autoCropShorts === "boolean") {
+        autoCropShortsCheckbox.checked = data.autoCropShorts;
+      } else {
+        autoCropShortsCheckbox.checked = true; // デフォルトON
+      }
+      checkShortsAutoCrop();
     }
   );
 
@@ -86,13 +93,26 @@ document.addEventListener("DOMContentLoaded", async () => {
     chrome.storage.local.set({
       audioFormat: audioFormatSelect.value,
       coverMode: coverModeSelect.value,
-      embedLyrics: embedLyricsCheckbox.checked
+      embedLyrics: embedLyricsCheckbox.checked,
+      autoCropShorts: autoCropShortsCheckbox.checked
     });
+  }
+
+  function checkShortsAutoCrop() {
+    const url = pageUrlInput.value.trim();
+    if (/youtube\.com\/shorts\//i.test(url) && autoCropShortsCheckbox.checked) {
+      coverModeSelect.value = "crop";
+    }
   }
 
   audioFormatSelect.addEventListener("change", saveCurrentPreferences);
   coverModeSelect.addEventListener("change", saveCurrentPreferences);
   embedLyricsCheckbox.addEventListener("change", saveCurrentPreferences);
+  autoCropShortsCheckbox.addEventListener("change", () => {
+    saveCurrentPreferences();
+    checkShortsAutoCrop();
+  });
+  pageUrlInput.addEventListener("input", checkShortsAutoCrop);
 
   // Get active tab info
   try {
@@ -104,6 +124,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       if (activeTab.url && /^https?:\/\//i.test(activeTab.url)) {
         pageUrlInput.value = activeTab.url;
+        checkShortsAutoCrop();
       } else {
         pageUrlInput.value = "";
         pageUrlInput.placeholder = "有効なURLを入力してください";
@@ -124,9 +145,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     setButtonLoading(true);
     hideStatus();
 
+    let finalCoverMode = coverModeSelect.value;
+    if (/youtube\.com\/shorts\//i.test(url) && autoCropShortsCheckbox.checked) {
+      finalCoverMode = "crop";
+    }
+
     const options = {
       audio_format: audioFormatSelect.value,
-      cover_mode_non_square: coverModeSelect.value,
+      cover_mode_non_square: finalCoverMode,
+      auto_crop_shorts: autoCropShortsCheckbox.checked,
       embed_lyrics: embedLyricsCheckbox.checked,
       concurrent_fragments: 5
     };
