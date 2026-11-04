@@ -1,13 +1,15 @@
 # ms-dlp
 
-YouTube等から音源をダウンロードし、正方形ジャケット画像、取得先メタデータ、および歌詞を自動埋め込みする音楽ダウンローダーです。
+YouTubeなどから音源をダウンロードし、正方形ジャケット画像、メタデータおよび歌詞を自動埋め込みする音楽特化ダウンローダー（yt-dlp,ffmpegを使用しています）
+
+PCならFoobar2000、スマホであればApple Music、Spotifyなどのサービスにアップロードし、歌ってみた動画などをどこでも聞けるようになります。
 
 ブラウザ拡張機能 と CUI の2つのインターフェースに対応しています。
 
 <p align="center">
   <img src="extension/assets/screenshot1.png" width="360" alt="ダウンロード画面">
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="extension/assets/screenshot2.png" width="360" alt="タスク一覧画面">
+
+<img src="extension/assets/screenshot2.png" width="360" alt="タスク一覧画面">
 </p>
 
 <p align="center">
