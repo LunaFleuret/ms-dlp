@@ -300,7 +300,11 @@ function Normalize-Url {
         $u = "https://" + $u
     }
 
-    if ($u -match 'youtube\.com/watch\?v=([^&]+)' -and $u -match 'list=(?:RD|UL|TL)') {
+    # YouTube: Strip tracking parameters and Mix/Radio playlists from watch URLs
+    if ($u -match '(?:youtube\.com|music\.youtube\.com)/watch\?.*v=([a-zA-Z0-9_-]{11})') {
+        $videoId = $Matches[1]
+        $u = "https://www.youtube.com/watch?v=$videoId"
+    } elseif ($u -match 'youtu\.be/([a-zA-Z0-9_-]{11})') {
         $videoId = $Matches[1]
         $u = "https://www.youtube.com/watch?v=$videoId"
     }

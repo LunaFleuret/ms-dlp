@@ -121,10 +121,16 @@ def main():
         proc.stdin.close()
 
         last_save_time = 0.0
+        saved_successfully = False
+        captured_error = ""
+
         for raw_line in iter(proc.stdout.readline, b''):
             line = decode_line(raw_line).strip()
             if not line:
                 continue
+
+            if "[ERROR]" in line or "[FATAL]" in line or "ERROR:" in line:
+                captured_error = line
 
             match = PROGRESS_REGEX.search(line)
             if match:
@@ -163,6 +169,7 @@ def main():
                 task_data["progress"] = 100.0
                 update_task_file(task_file, task_data)
             elif "[SUCCESS] Saved:" in line or "[SAVED] Saved:" in line:
+                saved_successfully = True
                 task_data["status"] = "completed"
                 task_data["percent"] = 100.0
                 task_data["progress"] = 100.0
@@ -171,15 +178,21 @@ def main():
 
         proc.wait()
 
-        if task_data.get("status") != "completed":
-            if proc.returncode == 0:
-                task_data["status"] = "completed"
-                task_data["percent"] = 100.0
-                task_data["progress"] = 100.0
-                task_data["eta"] = "00:00"
-            else:
-                task_data["status"] = "error"
-                task_data["error"] = f"Exited with code {proc.returncode}"
+        if not saved_successfully:
+            task_data["status"] = "error"
+            if not task_data.get("error"):
+                if captured_error:
+                    task_data["error"] = captured_error
+                elif proc.returncode != 0:
+                    task_data["error"] = f"Process failed with exit code {proc.returncode}"
+                else:
+                    task_data["error"] = "Process finished without saving any audio file."
+            update_task_file(task_file, task_data)
+        else:
+            task_data["status"] = "completed"
+            task_data["percent"] = 100.0
+            task_data["progress"] = 100.0
+            task_data["eta"] = "00:00"
             update_task_file(task_file, task_data)
 
     except Exception as e:
