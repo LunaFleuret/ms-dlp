@@ -4,5 +4,6 @@
   "cover_mode_non_square": "stretch",
   "embed_lyrics": true,
   "concurrent_fragments": 5,
-  "output_folder": "output"
+  "output_folder": "output",
+  "auto_crop_shorts": true
 }

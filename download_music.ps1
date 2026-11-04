@@ -1,5 +1,9 @@
 #Requires -Version 5.1
 
+param(
+    [switch]$SetupOnly
+)
+
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 $DefaultConfig = [ordered]@{
@@ -40,6 +44,66 @@ $Script:Config = Load-AppConfig
 $Script:Config["YtDlpUrl"]         = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
 $Script:Config["AtomicParsleyUrl"] = "https://github.com/wez/atomicparsley/releases/download/20240608.083822.1ed9031/AtomicParsleyWindows.zip"
 $Script:Config["FfmpegUrl"]        = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
+$Script:Config["PythonUrl"]        = "https://www.python.org/ftp/python/3.12.8/python-3.12.8-embed-amd64.zip"
+
+function Find-Python {
+    $binFolder = if ($Script:Config["bin_folder"]) { $Script:Config["bin_folder"] } else { "bin" }
+    $portablePy = Join-Path $PSScriptRoot "$binFolder\python\python.exe"
+    if (Test-Path $portablePy) { return $portablePy }
+
+    $pathResult = Get-Command "python" -ErrorAction SilentlyContinue
+    if ($pathResult -and (Test-Path $pathResult.Source)) {
+        try {
+            $verOutput = & $pathResult.Source --version 2>&1
+            if ($verOutput -match "Python (\d+)\.(\d+)") {
+                $major = [int]$matches[1]
+                $minor = [int]$matches[2]
+                if ($major -gt 3 -or ($major -eq 3 -and $minor -ge 8)) {
+                    return $pathResult.Source
+                }
+            }
+        } catch {}
+    }
+
+    $searchPaths = @(
+        "$env:LOCALAPPDATA\Programs\Python\Python3*\python.exe",
+        "${env:ProgramFiles}\Python3*\python.exe"
+    )
+    foreach ($pattern in $searchPaths) {
+        $found = Get-Item $pattern -ErrorAction SilentlyContinue | Select-Object -Last 1
+        if ($found -and (Test-Path $found.FullName)) { return $found.FullName }
+    }
+
+    return $null
+}
+
+function Install-PythonTool {
+    $binDir = Ensure-BinDirectory
+    $pyDir = Join-Path $binDir "python"
+    $targetExe = Join-Path $pyDir "python.exe"
+    $zipPath = Join-Path ([System.IO.Path]::GetTempPath()) "python_embed.zip"
+
+    Write-Host "  -> Downloading portable Python (3.12 64-bit embeddable)..." -ForegroundColor Gray
+    try {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        Invoke-WebRequest -Uri $Script:Config["PythonUrl"] -OutFile $zipPath -UseBasicParsing
+
+        if (-not (Test-Path $pyDir)) {
+            New-Item -ItemType Directory -Path $pyDir -Force | Out-Null
+        }
+        Expand-Archive -LiteralPath $zipPath -DestinationPath $pyDir -Force
+
+        if (Test-Path $targetExe) {
+            Write-Host "  [OK] Portable Python installed to bin\python folder." -ForegroundColor Green
+            return $targetExe
+        }
+    } catch {
+        Write-Host "  [ERROR] Failed to download Python: $($_.Exception.Message)" -ForegroundColor Red
+    } finally {
+        Remove-Item $zipPath -Force -ErrorAction SilentlyContinue
+    }
+    return $null
+}
 
 function Find-Executable {
     param([string]$ExeName)
@@ -155,6 +219,14 @@ function Install-FfmpegTool {
 function Initialize-Tools {
     Write-Host "Checking required tools..." -ForegroundColor Cyan
 
+    $py = Find-Python
+    if (-not $py) {
+        Write-Host "  * Python not found. Auto-installing portable Python..." -ForegroundColor Yellow
+        $py = Install-PythonTool
+    } else {
+        Write-Host "  * Python: $py" -ForegroundColor Gray
+    }
+
     $yt = Find-Executable -ExeName "yt-dlp"
     if (-not $yt) {
         Write-Host "  * yt-dlp not found. Auto-installing..." -ForegroundColor Yellow
@@ -190,6 +262,7 @@ function Initialize-Tools {
     }
 
     return @{
+        Python        = $py
         YtDlp         = $yt
         Ffmpeg        = $ff
         Ffprobe       = $probe
@@ -636,7 +709,13 @@ function Embed-TagsAndArtwork {
 }
 
 function Main {
-    Clear-Host
+    param(
+        [switch]$SetupOnly
+    )
+
+    if (-not $SetupOnly) {
+        Clear-Host
+    }
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host "       Universal Music Downloader       " -ForegroundColor White
     Write-Host "    (YouTube / X / TikTok / Niconico)   " -ForegroundColor DarkCyan
@@ -657,6 +736,14 @@ function Main {
     $outputDir = Join-Path $PSScriptRoot $outFolder
     $tempBase  = Join-Path $PSScriptRoot $tempFolder
     if (-not (Test-Path $outputDir)) { New-Item -ItemType Directory -Path $outputDir -Force | Out-Null }
+
+    $tasksDir = Join-Path $PSScriptRoot "native_host\tasks"
+    if (-not (Test-Path $tasksDir)) { New-Item -ItemType Directory -Path $tasksDir -Force | Out-Null }
+
+    if ($SetupOnly) {
+        Write-Host "Setup completed! All tools, folders, and configurations are ready." -ForegroundColor Green
+        return
+    }
 
     $cookieArgs = Get-CookieArguments
 
@@ -827,4 +914,4 @@ function Main {
     }
 }
 
-Main
+Main -SetupOnly:$SetupOnly

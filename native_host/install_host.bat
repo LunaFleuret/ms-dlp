@@ -7,14 +7,25 @@ echo ===================================================
 echo.
 
 set "SCRIPT_DIR=%~dp0"
+set "WORKSPACE_DIR=%SCRIPT_DIR%..\"
 set "MANIFEST_PATH=%SCRIPT_DIR%com.msdlp.downloader.json"
 set "LAUNCHER_PATH=%SCRIPT_DIR%host_launcher.bat"
+
+echo [1/3] Checking and setting up required dependencies...
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%WORKSPACE_DIR%download_music.ps1" -SetupOnly
+if %ERRORLEVEL% neq 0 (
+    echo.
+    echo [ERROR] Dependency setup failed. Please check your internet connection and try again.
+    pause
+    exit /b %ERRORLEVEL%
+)
+echo [OK] Dependencies are ready.
+echo.
 
 :: Escape backslashes for JSON
 set "ESCAPED_LAUNCHER_PATH=%LAUNCHER_PATH:\=\\%"
 
-:: Generate com.msdlp.downloader.json with the current absolute path
-echo Generating host manifest...
+echo [2/3] Generating host manifest...
 (
     echo {
     echo   "name": "com.msdlp.downloader",
@@ -32,6 +43,7 @@ echo Generating host manifest...
 echo Manifest generated at: %MANIFEST_PATH%
 echo.
 
+echo [3/3] Registering Native Messaging Host to browsers...
 :: Register to Google Chrome
 echo Registering to Google Chrome...
 reg add "HKCU\Software\Google\Chrome\NativeMessagingHosts\com.msdlp.downloader" /ve /t REG_SZ /d "%MANIFEST_PATH%" /f >nul
@@ -61,7 +73,12 @@ reg add "HKCU\Software\Perplexity\Comet\NativeMessagingHosts\com.msdlp.downloade
 
 echo.
 echo ===================================================
-echo  Installation completed!
+echo  Installation completed successfully!
+echo ===================================================
+echo Next steps:
+echo 1. Open your browser extensions page (e.g., chrome://extensions or edge://extensions)
+echo 2. Enable "Developer mode"
+echo 3. Click "Load unpacked" and select the "extension" folder of this project.
 echo ===================================================
 pause
 endlocal
