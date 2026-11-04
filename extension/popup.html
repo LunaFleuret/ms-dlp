@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ms-dlp 音楽ダウンローダー</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo-group">
+        <div class="logo-badge">ms-dlp</div>
+        <span class="app-title">Music Downloader</span>
+      </div>
+      <div class="header-actions">
+        <button id="openOptionsBtn" class="icon-button" title="設定">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <div class="tabs-nav">
+      <button class="tab-btn active" id="tabNewBtn">ダウンロード</button>
+      <button class="tab-btn" id="tabTasksBtn">
+        タスク一覧
+        <span class="badge hidden" id="activeTasksBadge">0</span>
+      </button>
+    </div>
+
+    <!-- View: New Download Tab -->
+    <div id="viewNew" class="tab-view active">
+      <!-- Media Info Card -->
+      <div class="card page-card">
+        <div class="page-title" id="pageTitle">タイトルを取得中...</div>
+        <div class="input-group">
+          <label for="pageUrl" class="input-label">対象 URL</label>
+          <input type="text" id="pageUrl" class="text-input" placeholder="https://..." spellcheck="false" />
+        </div>
+      </div>
+
+      <!-- Settings Card -->
+      <div class="card form-card">
+        <div class="form-row">
+          <div class="form-col">
+            <label class="input-label" for="audioFormat">音声形式</label>
+            <select id="audioFormat" class="select-input">
+              <option value="m4a" selected>M4A (ロスレス・推奨)</option>
+              <option value="mp3">MP3 (最高音質 320k)</option>
+              <option value="flac">FLAC (ハイレゾ・可逆)</option>
+              <option value="opus">Opus (高圧縮・高音質)</option>
+            </select>
+          </div>
+          <div class="form-col">
+            <label class="input-label" for="coverMode">ジャケット加工</label>
+            <select id="coverMode" class="select-input">
+              <option value="stretch" selected>stretch (1:1圧縮)</option>
+              <option value="crop">crop (左右カット)</option>
+              <option value="blur">blur (ぼかし背景)</option>
+              <option value="original">original (無加工)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="toggles-row">
+          <label class="toggle-item">
+            <input type="checkbox" id="embedLyrics" checked />
+            <span class="toggle-label">歌詞を自動取得・埋め込む (YouTube字幕 + LRCLIB)</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Action Button -->
+      <div class="action-buttons-group">
+        <button id="downloadBtn" class="primary-button" title="ダウンロードを開始">
+          <span class="btn-text">音楽をダウンロード</span>
+          <div class="spinner hidden" id="btnSpinner"></div>
+        </button>
+      </div>
+
+      <!-- Status banner -->
+      <div id="statusBanner" class="status-banner hidden">
+        <div class="status-text" id="statusText"></div>
+      </div>
+    </div>
+
+    <!-- View: Progress / Tasks Tab -->
+    <div id="viewTasks" class="tab-view hidden">
+      <div class="tasks-header">
+        <span class="tasks-count" id="tasksCountLabel">0 件のタスク</span>
+        <div class="tasks-actions">
+          <button id="openFolderBtn" class="text-button" title="エクスプローラーで出力フォルダを開く">出力フォルダへ移動</button>
+          <span class="action-divider">|</span>
+          <button id="clearFinishedBtn" class="text-button">完了済みを削除</button>
+        </div>
+      </div>
+
+      <div id="tasksList" class="tasks-list">
+        <div class="empty-state" id="emptyTasksState">
+          <div class="empty-icon">&#128229;</div>
+          <div class="empty-title">進行中のタスクはありません</div>
+          <div class="empty-sub">「ダウンロード」タブから実行してください。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

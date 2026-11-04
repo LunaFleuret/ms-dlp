@@ -1,0 +1,37 @@
+# Executables & Binaries
+bin/*
+!bin/.gitkeep
+*.exe
+
+# Rust build artifacts
+target/
+
+# Sensitive & Private configurations (Cookies etc.)
+private/*
+!private/.gitkeep
+
+# Native Messaging Host generated manifests & task history
+native_host/com.*.downloader.json
+native_host/tasks/*
+!native_host/tasks/.gitkeep
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Download outputs & temporary files
+output/*
+!output/.gitkeep
+temp_download/
+*.tmp
+
+# Logs
+logs/
+*.log
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.claude/

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ms-dlp 設定</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="options-container">
+    <header class="header">
+      <div class="logo-group">
+        <div class="logo-badge">ms-dlp</div>
+        <h1>ダウンロード環境設定</h1>
+      </div>
+      <span class="version-tag">Music Downloader</span>
+    </header>
+
+    <main class="main-content">
+      <!-- Section: Defaults -->
+      <section class="settings-card">
+        <h2 class="card-title">デフォルトの保存形式</h2>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="defaultAudioFormat" class="form-label">デフォルト音声形式</label>
+            <select id="defaultAudioFormat" class="form-select">
+              <option value="m4a">M4A (ロスレス・推奨)</option>
+              <option value="mp3">MP3 (最高音質 320k)</option>
+              <option value="flac">FLAC (ハイレゾ・可逆)</option>
+              <option value="opus">Opus (高圧縮・高音質)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="defaultCoverMode" class="form-label">デフォルト非正方形ジャケット加工</label>
+            <select id="defaultCoverMode" class="form-select">
+              <option value="stretch">stretch (1:1圧縮・全体を収める)</option>
+              <option value="crop">crop (左右カットして正方形化)</option>
+              <option value="blur">blur (背景にぼかし画像を敷く)</option>
+              <option value="original">original (横長のまま無加工埋め込み)</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section: Features & Speed -->
+      <section class="settings-card">
+        <h2 class="card-title">タグ・歌詞・高速化</h2>
+
+        <div class="form-group-checkbox">
+          <label class="checkbox-label">
+            <input type="checkbox" id="defaultEmbedLyrics" checked />
+            <span class="checkbox-text">二段階ハイブリッド歌詞埋め込み（YouTube字幕 + LRCLIB自動検索）</span>
+          </label>
+        </div>
+
+        <div class="form-group-checkbox">
+          <label class="checkbox-label">
+            <input type="checkbox" id="defaultParallel" checked />
+            <span class="checkbox-text">並列分割ダウンロード (-N 5 高速化) をデフォルトで有効にする</span>
+          </label>
+        </div>
+      </section>
+
+      <!-- Section: Connection -->
+      <section class="settings-card">
+        <h2 class="card-title">ネイティブホスト接続確認</h2>
+        <p class="form-help">
+          ブラウザ拡張機能とローカルのPythonスクリプト（Native Messaging Host）が正しく通信できているかテストします。
+        </p>
+        <div>
+          <button id="testConnBtn" class="secondary-button">接続テストを実行</button>
+        </div>
+        <div id="connResult" class="conn-result"></div>
+      </section>
+    </main>
+
+    <footer class="actions-footer">
+      <span id="saveStatus" class="save-status">設定を保存しました</span>
+      <button id="saveBtn" class="primary-button">設定を保存</button>
+    </footer>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>
+

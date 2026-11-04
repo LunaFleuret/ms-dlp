@@ -1,0 +1,8 @@
+{
+  "audio_format": "m4a",
+  "audio_quality": "0",
+  "cover_mode_non_square": "stretch",
+  "embed_lyrics": true,
+  "concurrent_fragments": 5,
+  "output_folder": "output"
+}
