@@ -62,7 +62,7 @@ ms-dlp/
 
 ブラウザの操作だけで裏で音楽をダウンロード・タグ付け保存できます。
 
-#### 初回セットアップ
+#### ⚠️初回セットアップ⚠️
 
 1. `native_host/install_host.bat` をダブルクリックして実行します（Chrome / Edge / Brave 等のレジストリにホストが登録されます）。`native_host/`フォルダ直下に配置されています。
 2. ブラウザのアドレスバーに `chrome://extensions`（Edgeは `edge://extensions`）と入力して開きます。
