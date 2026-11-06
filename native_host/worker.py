@@ -78,6 +78,10 @@ def main():
                 cfg["auto_crop_shorts"] = bool(options["auto_crop_shorts"])
             if "embed_lyrics" in options:
                 cfg["embed_lyrics"] = bool(options["embed_lyrics"])
+            if "normalize_audio" in options:
+                cfg["normalize_audio"] = bool(options["normalize_audio"])
+            if "target_loudness_lufs" in options:
+                cfg["target_loudness_lufs"] = float(options["target_loudness_lufs"])
             if "concurrent_fragments" in options:
                 cfg["concurrent_fragments"] = int(options["concurrent_fragments"])
             with open(config_file, "w", encoding="utf-8") as f:

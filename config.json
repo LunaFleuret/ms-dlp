@@ -5,5 +5,7 @@
   "embed_lyrics": true,
   "concurrent_fragments": 5,
   "output_folder": "output",
-  "auto_crop_shorts": true
+  "auto_crop_shorts": true,
+  "normalize_audio": true,
+  "target_loudness_lufs": -14.0
 }

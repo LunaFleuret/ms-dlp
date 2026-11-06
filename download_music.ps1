@@ -14,6 +14,8 @@ $DefaultConfig = [ordered]@{
     "embed_lyrics"          = $true
     "concurrent_fragments"  = 5
     "output_folder"         = "output"
+    "normalize_audio"       = $true
+    "target_loudness_lufs"  = -14.0
     "bin_folder"            = "bin"
     "private_folder"        = "private"
     "temp_folder"           = "temp_download"
@@ -517,6 +519,87 @@ function Resolve-ThumbnailAndMetadata {
     return $null
 }
 
+function Normalize-AudioLoudness {
+    param(
+        [string]$FfmpegPath,
+        [string]$AudioFile,
+        [double]$TargetLufs = -14.0
+    )
+
+    if (-not $FfmpegPath -or -not (Test-Path -LiteralPath $FfmpegPath) -or -not (Test-Path -LiteralPath $AudioFile)) {
+        return $false
+    }
+
+    Write-Host "    [Loudness] Measuring audio loudness (Pass 1)..." -ForegroundColor DarkCyan
+    $pass1Args = @(
+        "-hide_banner",
+        "-nostats",
+        "-i", $AudioFile,
+        "-af", "loudnorm=I=$TargetLufs:LRA=11:TP=-1.0:print_format=json",
+        "-f", "null",
+        "-"
+    )
+
+    $p1Output = & $FfmpegPath @pass1Args 2>&1
+    $outText = $p1Output -join "`n"
+
+    if (-not ($outText -match '(?s)(\{\s*"input_i"\s*:.*?\})')) {
+        Write-Host "    [Loudness Warning] Failed to parse Pass 1 metrics. Skipping normalization." -ForegroundColor Yellow
+        return $false
+    }
+
+    try {
+        $stats = $Matches[1] | ConvertFrom-Json
+        $measI        = $stats.input_i
+        $measLRA      = $stats.input_lra
+        $measTP       = $stats.input_tp
+        $measThresh   = $stats.input_thresh
+        $targetOffset = $stats.target_offset
+
+        Write-Host "    [Loudness Info] Measured: I = ${measI} LUFS, TP = ${measTP} dBTP (Target: ${TargetLufs} LUFS)" -ForegroundColor DarkGray
+        Write-Host "    [Loudness] Applying EBU R128 linear normalization (Pass 2)..." -ForegroundColor DarkCyan
+
+        $ext = [System.IO.Path]::GetExtension($AudioFile)
+        $tempNorm = [System.IO.Path]::ChangeExtension($AudioFile, ".norm$ext")
+
+        $filterStr = "loudnorm=I=$TargetLufs:LRA=11:TP=-1.0:measured_I=$measI:measured_LRA=$measLRA:measured_TP=$measTP:measured_thresh=$measThresh:offset=$targetOffset:linear=true"
+
+        $encArgs = @()
+        if ($ext -eq ".m4a") {
+            $encArgs = @("-c:a", "aac", "-b:a", "256k")
+        } elseif ($ext -eq ".mp3") {
+            $encArgs = @("-c:a", "libmp3lame", "-q:a", "0")
+        } elseif ($ext -eq ".flac") {
+            $encArgs = @("-c:a", "flac")
+        } elseif ($ext -eq ".opus") {
+            $encArgs = @("-c:a", "libopus", "-b:a", "160k")
+        } else {
+            $encArgs = @("-c:a", "aac", "-b:a", "256k")
+        }
+
+        $pass2Args = @(
+            "-y",
+            "-i", $AudioFile,
+            "-af", $filterStr
+        ) + $encArgs + @($tempNorm)
+
+        & $FfmpegPath @pass2Args 2>&1 | Out-Null
+
+        if ($LASTEXITCODE -eq 0 -and (Test-Path -LiteralPath $tempNorm)) {
+            Move-Item -LiteralPath $tempNorm -Destination $AudioFile -Force
+            Write-Host "    [OK] Loudness normalized to ${TargetLufs} LUFS (linear mode)." -ForegroundColor Green
+            return $true
+        } else {
+            Write-Host "    [Loudness Warning] Pass 2 failed. Keeping original audio." -ForegroundColor Yellow
+            if (Test-Path -LiteralPath $tempNorm) { Remove-Item -LiteralPath $tempNorm -Force -ErrorAction SilentlyContinue }
+            return $false
+        }
+    } catch {
+        Write-Host "    [Loudness Warning] Normalization error: $($_.Exception.Message)" -ForegroundColor Yellow
+        return $false
+    }
+}
+
 function Format-CoverArt {
     param(
         [string]$FfmpegPath,
@@ -857,7 +940,7 @@ function Main {
     Write-Host "       Universal Music Downloader       " -ForegroundColor White
     Write-Host "    (YouTube / X / TikTok / Niconico)   " -ForegroundColor DarkCyan
     Write-Host "========================================" -ForegroundColor Cyan
-    Write-Host "Config : Format = $($Script:Config['audio_format']), NonSquareCover = $($Script:Config['cover_mode_non_square']), Lyrics = $($Script:Config['embed_lyrics']), Threads = $($Script:Config['concurrent_fragments'])" -ForegroundColor DarkGray
+    Write-Host "Config : Format = $($Script:Config['audio_format']), Normalize = $($Script:Config['normalize_audio']) ($($Script:Config['target_loudness_lufs']) LUFS), NonSquareCover = $($Script:Config['cover_mode_non_square']), Lyrics = $($Script:Config['embed_lyrics']), Threads = $($Script:Config['concurrent_fragments'])" -ForegroundColor DarkGray
     Write-Host ""
 
     $tools = Initialize-Tools
@@ -964,6 +1047,12 @@ function Main {
 
                 Write-Host "    Title  : $finalTitle" -ForegroundColor Green
                 Write-Host "    Artist : $finalArtist" -ForegroundColor Green
+
+                if ($Script:Config["normalize_audio"]) {
+                    $targetLufs = if ($null -ne $Script:Config["target_loudness_lufs"]) { [double]$Script:Config["target_loudness_lufs"] } else { -14.0 }
+                    Write-Host "  [Audio] Normalizing loudness (EBU R128 to ${targetLufs} LUFS)..." -ForegroundColor White
+                    Normalize-AudioLoudness -FfmpegPath $tools.Ffmpeg -AudioFile $audioFile.FullName -TargetLufs $targetLufs
+                }
 
                 Write-Host "  [3/5] Checking and formatting cover art..." -ForegroundColor White
                 $processedCover = $null

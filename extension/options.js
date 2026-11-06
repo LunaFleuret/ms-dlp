@@ -1,6 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
   const defaultAudioFormat = document.getElementById("defaultAudioFormat");
   const defaultCoverMode = document.getElementById("defaultCoverMode");
+  const defaultNormalizeAudio = document.getElementById("defaultNormalizeAudio");
   const defaultEmbedLyrics = document.getElementById("defaultEmbedLyrics");
   const defaultAutoCropShorts = document.getElementById("defaultAutoCropShorts");
   const defaultParallel = document.getElementById("defaultParallel");
@@ -14,12 +15,18 @@ document.addEventListener("DOMContentLoaded", () => {
   chrome.storage.local.get([
     "audioFormat",
     "coverMode",
+    "normalizeAudio",
     "embedLyrics",
     "autoCropShorts",
     "parallelFragments"
   ], (items) => {
     if (items.audioFormat) defaultAudioFormat.value = items.audioFormat;
     if (items.coverMode) defaultCoverMode.value = items.coverMode;
+    if (typeof items.normalizeAudio === "boolean") {
+      defaultNormalizeAudio.checked = items.normalizeAudio;
+    } else {
+      defaultNormalizeAudio.checked = true;
+    }
     if (typeof items.embedLyrics === "boolean") defaultEmbedLyrics.checked = items.embedLyrics;
     if (typeof items.autoCropShorts === "boolean") {
       defaultAutoCropShorts.checked = items.autoCropShorts;
@@ -52,6 +59,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const configData = {
       audioFormat: defaultAudioFormat.value,
       coverMode: defaultCoverMode.value,
+      normalizeAudio: defaultNormalizeAudio.checked,
       embedLyrics: defaultEmbedLyrics.checked,
       autoCropShorts: defaultAutoCropShorts.checked,
       parallelFragments: defaultParallel.checked

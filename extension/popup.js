@@ -12,6 +12,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const audioFormatSelect = document.getElementById("audioFormat");
   const coverModeSelect = document.getElementById("coverMode");
+  const normalizeAudioCheckbox = document.getElementById("normalizeAudio");
   const embedLyricsCheckbox = document.getElementById("embedLyrics");
   const autoCropShortsCheckbox = document.getElementById("autoCropShorts");
 
@@ -74,10 +75,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Load saved preferences
   chrome.storage.local.get(
-    ["audioFormat", "coverMode", "embedLyrics", "autoCropShorts"],
+    ["audioFormat", "coverMode", "normalizeAudio", "embedLyrics", "autoCropShorts"],
     (data) => {
       if (data.audioFormat) audioFormatSelect.value = data.audioFormat;
       if (data.coverMode) coverModeSelect.value = data.coverMode;
+      if (typeof data.normalizeAudio === "boolean") {
+        normalizeAudioCheckbox.checked = data.normalizeAudio;
+      } else {
+        normalizeAudioCheckbox.checked = true; // デフォルトON
+      }
       if (typeof data.embedLyrics === "boolean") embedLyricsCheckbox.checked = data.embedLyrics;
       if (typeof data.autoCropShorts === "boolean") {
         autoCropShortsCheckbox.checked = data.autoCropShorts;
@@ -93,6 +99,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     chrome.storage.local.set({
       audioFormat: audioFormatSelect.value,
       coverMode: coverModeSelect.value,
+      normalizeAudio: normalizeAudioCheckbox.checked,
       embedLyrics: embedLyricsCheckbox.checked,
       autoCropShorts: autoCropShortsCheckbox.checked
     });
@@ -107,6 +114,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   audioFormatSelect.addEventListener("change", saveCurrentPreferences);
   coverModeSelect.addEventListener("change", saveCurrentPreferences);
+  normalizeAudioCheckbox.addEventListener("change", saveCurrentPreferences);
   embedLyricsCheckbox.addEventListener("change", saveCurrentPreferences);
   autoCropShortsCheckbox.addEventListener("change", () => {
     saveCurrentPreferences();
@@ -153,6 +161,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const options = {
       audio_format: audioFormatSelect.value,
       cover_mode_non_square: finalCoverMode,
+      normalize_audio: normalizeAudioCheckbox.checked,
       auto_crop_shorts: autoCropShortsCheckbox.checked,
       embed_lyrics: embedLyricsCheckbox.checked,
       concurrent_fragments: 5
