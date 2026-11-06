@@ -2,6 +2,7 @@
 bin/*
 !bin/.gitkeep
 *.exe
+!ms-dlp.exe
 
 # Rust build artifacts
 target/
