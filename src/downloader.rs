@@ -96,6 +96,9 @@ where
     cmd.args(["-o", &file_template, url]);
     cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
 
+    #[cfg(windows)]
+    cmd.creation_flags(0x08000000);
+
     let mut child = cmd.spawn()?;
     let stdout = child.stdout.take().ok_or_else(|| anyhow!("Failed to capture stdout"))?;
     let mut reader = BufReader::new(stdout).lines();

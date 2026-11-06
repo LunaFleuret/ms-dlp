@@ -3,6 +3,12 @@ use regex::Regex;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
+
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
+
 pub fn is_valid_image(path: &Path) -> bool {
     if !path.is_file() {
         return false;
@@ -125,6 +131,9 @@ pub async fn resolve_thumbnail_and_metadata(
             cmd.arg(c);
         }
 
+        #[cfg(windows)]
+        cmd.creation_flags(CREATE_NO_WINDOW);
+
         let _ = cmd.output();
 
         if let Ok(entries) = std::fs::read_dir(session_dir) {
@@ -195,6 +204,9 @@ pub fn format_cover_art(
         cmd.arg("-vf").arg(&filter);
     }
     cmd.args(["-q:v", "2"]).arg(output_image);
+
+    #[cfg(windows)]
+    cmd.creation_flags(CREATE_NO_WINDOW);
 
     let status = cmd.status()?;
     if status.success() && output_image.is_file() {

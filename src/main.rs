@@ -18,6 +18,11 @@ async fn main() -> Result<()> {
     let current_exe = std::env::current_exe()?;
     let root_dir = current_exe.parent().unwrap_or(Path::new("."));
 
+    // Check if running in worker mode (detached background download)
+    if args.len() >= 3 && args[1] == "--worker" {
+        return run_worker(root_dir, &args[2]).await;
+    }
+
     // Check if running in Chrome Native Messaging Host mode
     if args.iter().any(|a| a == "--native-host" || a.starts_with("chrome-extension://")) {
         return run_native_host(root_dir).await;
@@ -112,6 +117,22 @@ async fn process_single_download(
     cookie_args: &[String],
     url: &str,
 ) -> Result<PathBuf> {
+    process_single_download_with_progress(root_dir, config, tools, cookie_args, url, None, "", |_pct, _speed, _eta| {}).await
+}
+
+async fn process_single_download_with_progress<F>(
+    root_dir: &Path,
+    config: &Config,
+    tools: &ToolPaths,
+    cookie_args: &[String],
+    url: &str,
+    tasks_dir: Option<&Path>,
+    task_id: &str,
+    mut on_progress: F,
+) -> Result<PathBuf>
+where
+    F: FnMut(f32, &str, &str),
+{
     let session_id = format!("{:x}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_millis());
     let session_dir = config.get_temp_dir(root_dir).join(&session_id);
     std::fs::create_dir_all(&session_dir)?;
@@ -128,7 +149,7 @@ async fn process_single_download(
         config.concurrent_fragments,
         config.embed_lyrics,
         cookie_args,
-        |_pct, _speed, _eta| {},
+        &mut on_progress,
     ).await {
         Ok(f) => f,
         Err(e) => {
@@ -137,6 +158,17 @@ async fn process_single_download(
             return Err(e);
         }
     };
+
+    if let Some(td) = tasks_dir {
+        if let Some(mut t) = native_host::load_task(td, task_id) {
+            t.status = "converting".to_string();
+            t.percent = 100.0;
+            t.progress = 100.0;
+            t.speed = String::new();
+            t.eta = String::new();
+            native_host::update_task_file(td, &t);
+        }
+    }
 
     println!("  [2/5] Reading source metadata & verifying thumbnail...");
     let resolved_thumb = cover::resolve_thumbnail_and_metadata(
@@ -154,6 +186,17 @@ async fn process_single_download(
 
     println!("    Title  : {}", title);
     println!("    Artist : {}", artist);
+
+    if let Some(td) = tasks_dir {
+        if let Some(mut t) = native_host::load_task(td, task_id) {
+            t.title = if artist != "Unknown Artist" && !artist.is_empty() {
+                format!("{} - {}", artist, title)
+            } else {
+                title.clone()
+            };
+            native_host::update_task_file(td, &t);
+        }
+    }
 
     // Loudness Normalization
     if config.normalize_audio {
@@ -245,6 +288,84 @@ async fn process_single_download(
     Ok(final_dest)
 }
 
+async fn run_worker(root_dir: &Path, task_id: &str) -> Result<()> {
+    let tasks_dir = root_dir.join("native_host").join("tasks");
+    let mut task_data = match native_host::load_task(&tasks_dir, task_id) {
+        Some(t) => t,
+        None => return Ok(()),
+    };
+
+    let config_path = root_dir.join("config.json");
+    let mut cfg = Config::load_or_create(&config_path);
+
+    if let Some(ref opts) = task_data.options {
+        if let Some(f) = opts.get("audio_format").and_then(|v| v.as_str()) { cfg.audio_format = f.to_string(); }
+        if let Some(m) = opts.get("cover_mode_non_square").and_then(|v| v.as_str()) { cfg.cover_mode_non_square = m.to_string(); }
+        if let Some(b) = opts.get("auto_crop_shorts").and_then(|v| v.as_bool()) { cfg.auto_crop_shorts = b; }
+        if let Some(b) = opts.get("embed_lyrics").and_then(|v| v.as_bool()) { cfg.embed_lyrics = b; }
+        if let Some(b) = opts.get("normalize_audio").and_then(|v| v.as_bool()) { cfg.normalize_audio = b; }
+        if let Some(c) = opts.get("concurrent_fragments").and_then(|v| v.as_u64()) { cfg.concurrent_fragments = c as u32; }
+    }
+
+    let tools = match ToolPaths::locate(root_dir, &cfg.bin_folder) {
+        Ok(t) => t,
+        Err(e) => {
+            task_data.status = "error".to_string();
+            task_data.error = format!("Core tools not found in bin: {}", e);
+            native_host::update_task_file(&tasks_dir, &task_data);
+            return Ok(());
+        }
+    };
+
+    let cookie_args = tools::get_cookie_args(root_dir, &cfg.private_folder);
+
+    let tasks_dir_clone = tasks_dir.clone();
+    let mut last_update = std::time::Instant::now();
+    let mut current_task = task_data.clone();
+
+    let on_progress = move |pct: f32, speed: &str, eta: &str| {
+        if last_update.elapsed().as_millis() >= 350 || pct >= 99.0 {
+            current_task.percent = pct;
+            current_task.progress = pct;
+            current_task.speed = speed.to_string();
+            current_task.eta = eta.to_string();
+            native_host::update_task_file(&tasks_dir_clone, &current_task);
+            last_update = std::time::Instant::now();
+        }
+    };
+
+    match process_single_download_with_progress(
+        root_dir,
+        &cfg,
+        &tools,
+        &cookie_args,
+        &task_data.url,
+        Some(&tasks_dir),
+        task_id,
+        on_progress,
+    ).await {
+        Ok(_) => {
+            if let Some(mut completed_task) = native_host::load_task(&tasks_dir, task_id) {
+                completed_task.status = "completed".to_string();
+                completed_task.progress = 100.0;
+                completed_task.percent = 100.0;
+                completed_task.speed = String::new();
+                completed_task.eta = "00:00".to_string();
+                native_host::update_task_file(&tasks_dir, &completed_task);
+            }
+        }
+        Err(e) => {
+            if let Some(mut err_task) = native_host::load_task(&tasks_dir, task_id) {
+                err_task.status = "error".to_string();
+                err_task.error = e.to_string();
+                native_host::update_task_file(&tasks_dir, &err_task);
+            }
+        }
+    }
+
+    Ok(())
+}
+
 async fn run_native_host(root_dir: &Path) -> Result<()> {
     let tasks_dir = root_dir.join("native_host").join("tasks");
     let _ = std::fs::create_dir_all(&tasks_dir);
@@ -258,6 +379,17 @@ async fn run_native_host(root_dir: &Path) -> Result<()> {
             "get_tasks" | "get_tasks_from_popup" => {
                 let tasks = native_host::load_all_tasks(&tasks_dir);
                 let resp = serde_json::json!({ "status": "success", "tasks": tasks });
+                let _ = native_host::write_native_message(&resp);
+            }
+            "clear_finished" | "clear_finished_tasks" => {
+                let deleted = native_host::clear_finished_tasks(&tasks_dir);
+                let resp = serde_json::json!({ "status": "success", "deleted": deleted });
+                let _ = native_host::write_native_message(&resp);
+            }
+            "cancel_task" => {
+                let tid = msg.task_id.as_deref().or(msg.id.as_deref()).unwrap_or("");
+                let ok = native_host::cancel_task(&tasks_dir, tid);
+                let resp = serde_json::json!({ "status": if ok { "success" } else { "error" } });
                 let _ = native_host::write_native_message(&resp);
             }
             "open_output_dir" => {
@@ -275,7 +407,7 @@ async fn run_native_host(root_dir: &Path) -> Result<()> {
             "start_download" => {
                 if let Some(target_url) = msg.url {
                     let task_id = format!("{:x}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis());
-                    let mut task_data = native_host::TaskData {
+                    let task_data = native_host::TaskData {
                         id: task_id.clone(),
                         url: target_url.clone(),
                         title: msg.title.unwrap_or_else(|| target_url.clone()),
@@ -291,46 +423,27 @@ async fn run_native_host(root_dir: &Path) -> Result<()> {
 
                     native_host::update_task_file(&tasks_dir, &task_data);
 
+                    // Spawn background download worker as an independent detached process
+                    let current_exe = std::env::current_exe().unwrap_or_else(|_| root_dir.join("ms-dlp.exe"));
+                    let mut cmd = std::process::Command::new(&current_exe);
+                    cmd.arg("--worker").arg(&task_id);
+
+                    #[cfg(windows)]
+                    {
+                        use std::os::windows::process::CommandExt;
+                        // 0x08000000 = CREATE_NO_WINDOW
+                        // 0x00000008 = DETACHED_PROCESS
+                        cmd.creation_flags(0x08000008);
+                    }
+
+                    cmd.stdin(std::process::Stdio::null());
+                    cmd.stdout(std::process::Stdio::null());
+                    cmd.stderr(std::process::Stdio::null());
+
+                    let _ = cmd.spawn();
+
                     let resp = serde_json::json!({ "status": "success", "task_id": task_id });
                     let _ = native_host::write_native_message(&resp);
-
-                    // Spawn background download task
-                    let root_buf = root_dir.to_path_buf();
-                    let tasks_buf = tasks_dir.clone();
-                    tokio::spawn(async move {
-                        let config_path = root_buf.join("config.json");
-                        let mut cfg = Config::load_or_create(&config_path);
-
-                        if let Some(opts) = msg.options {
-                            if let Some(f) = opts.get("audio_format").and_then(|v| v.as_str()) { cfg.audio_format = f.to_string(); }
-                            if let Some(m) = opts.get("cover_mode_non_square").and_then(|v| v.as_str()) { cfg.cover_mode_non_square = m.to_string(); }
-                            if let Some(b) = opts.get("auto_crop_shorts").and_then(|v| v.as_bool()) { cfg.auto_crop_shorts = b; }
-                            if let Some(b) = opts.get("embed_lyrics").and_then(|v| v.as_bool()) { cfg.embed_lyrics = b; }
-                            if let Some(b) = opts.get("normalize_audio").and_then(|v| v.as_bool()) { cfg.normalize_audio = b; }
-                        }
-
-                        if let Ok(tools) = ToolPaths::locate(&root_buf, &cfg.bin_folder) {
-                            let cookie_args = tools::get_cookie_args(&root_buf, &cfg.private_folder);
-                            match process_single_download(&root_buf, &cfg, &tools, &cookie_args, &target_url).await {
-                                Ok(_) => {
-                                    task_data.status = "completed".to_string();
-                                    task_data.progress = 100.0;
-                                    task_data.percent = 100.0;
-                                    task_data.eta = "00:00".to_string();
-                                    native_host::update_task_file(&tasks_buf, &task_data);
-                                }
-                                Err(e) => {
-                                    task_data.status = "error".to_string();
-                                    task_data.error = e.to_string();
-                                    native_host::update_task_file(&tasks_buf, &task_data);
-                                }
-                            }
-                        } else {
-                            task_data.status = "error".to_string();
-                            task_data.error = "Core tools (yt-dlp/ffmpeg) not found in bin".to_string();
-                            native_host::update_task_file(&tasks_buf, &task_data);
-                        }
-                    });
                 }
             }
             _ => {

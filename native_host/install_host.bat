@@ -9,10 +9,10 @@ echo.
 set "SCRIPT_DIR=%~dp0"
 set "WORKSPACE_DIR=%SCRIPT_DIR%..\"
 set "MANIFEST_PATH=%SCRIPT_DIR%com.msdlp.downloader.json"
-set "LAUNCHER_PATH=%SCRIPT_DIR%host_launcher.bat"
+for %%i in ("%WORKSPACE_DIR%ms-dlp.exe") do set "EXE_PATH=%%~fi"
 
 echo [1/3] Checking executable and dependencies...
-if not exist "%WORKSPACE_DIR%ms-dlp.exe" (
+if not exist "%EXE_PATH%" (
     echo.
     echo [ERROR] ms-dlp.exe not found!
     echo Please compile the project first using "cargo build --release".
@@ -23,16 +23,17 @@ echo [OK] ms-dlp.exe is ready.
 echo.
 
 :: Escape backslashes for JSON
-set "ESCAPED_LAUNCHER_PATH=%LAUNCHER_PATH:\=\\%"
+set "ESCAPED_EXE_PATH=%EXE_PATH:\=\\%"
 
 echo [2/3] Generating host manifest...
 (
     echo {
     echo   "name": "com.msdlp.downloader",
     echo   "description": "ms-dlp Native Messaging Host",
-    echo   "path": "!ESCAPED_LAUNCHER_PATH!",
+    echo   "path": "!ESCAPED_EXE_PATH!",
     echo   "type": "stdio",
     echo   "allowed_origins": [
+    echo     "chrome-extension://hmdananhlfdheiidbkneleofeelhckbn/",
     echo     "chrome-extension://pdaiillmonnbnkjfncclpkebijgalafg/",
     echo     "chrome-extension://okjhdfkigofpbbadadokbfdijknjocla/",
     echo     "chrome-extension://iblkegnjnjoclaokjhdfkigofpbbadad/"

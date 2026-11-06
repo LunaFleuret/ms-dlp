@@ -214,6 +214,23 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  // Cancel task event delegation
+  if (tasksList) {
+    tasksList.addEventListener("click", (e) => {
+      const cancelBtn = e.target.closest(".task-cancel-btn");
+      if (cancelBtn) {
+        const taskId = cancelBtn.dataset.id;
+        if (taskId) {
+          cancelBtn.disabled = true;
+          cancelBtn.textContent = "中止中...";
+          chrome.runtime.sendMessage({ action: "cancel_task", id: taskId }, () => {
+            renderTasks();
+          });
+        }
+      }
+    });
+  }
+
   // Status helper
   function showStatus(msg, type = "success") {
     statusText.textContent = msg;

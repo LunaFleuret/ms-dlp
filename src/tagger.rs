@@ -2,6 +2,12 @@ use anyhow::Result;
 use std::path::Path;
 use std::process::Command;
 
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
+
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
+
 pub fn embed_tags_and_artwork(
     atomic_parsley_path: Option<&Path>,
     ffmpeg_path: &Path,
@@ -34,6 +40,9 @@ pub fn embed_tags_and_artwork(
                         cmd.args(["--lyricsFile", &lyrics.to_string_lossy()]);
                     }
                 }
+
+                #[cfg(windows)]
+                cmd.creation_flags(CREATE_NO_WINDOW);
 
                 let status = cmd.status()?;
                 return Ok(status.success());
@@ -74,6 +83,9 @@ pub fn embed_tags_and_artwork(
     }
 
     cmd.arg(&temp_tagged);
+
+    #[cfg(windows)]
+    cmd.creation_flags(CREATE_NO_WINDOW);
 
     let status = cmd.status()?;
     if status.success() && temp_tagged.is_file() {

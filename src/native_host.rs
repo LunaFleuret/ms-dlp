@@ -9,6 +9,8 @@ pub struct NativeMessage {
     pub url: Option<String>,
     pub title: Option<String>,
     pub options: Option<serde_json::Value>,
+    pub task_id: Option<String>,
+    pub id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -84,4 +86,44 @@ pub fn load_all_tasks(tasks_dir: &Path) -> Vec<TaskData> {
     }
     tasks.sort_by(|a, b| b.created_at.partial_cmp(&a.created_at).unwrap_or(std::cmp::Ordering::Equal));
     tasks
+}
+
+pub fn load_task(tasks_dir: &Path, task_id: &str) -> Option<TaskData> {
+    let file_path = tasks_dir.join(format!("task_{}.json", task_id));
+    if let Ok(content) = std::fs::read_to_string(&file_path) {
+        serde_json::from_str::<TaskData>(&content).ok()
+    } else {
+        None
+    }
+}
+
+pub fn clear_finished_tasks(tasks_dir: &Path) -> usize {
+    let mut count = 0;
+    if let Ok(entries) = std::fs::read_dir(tasks_dir) {
+        for entry in entries.flatten() {
+            let p = entry.path();
+            if p.extension().and_then(|s| s.to_str()) == Some("json") {
+                if let Ok(content) = std::fs::read_to_string(&p) {
+                    if let Ok(t) = serde_json::from_str::<TaskData>(&content) {
+                        if t.status == "completed" || t.status == "error" || t.status == "cancelled" {
+                            if std::fs::remove_file(&p).is_ok() {
+                                count += 1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    count
+}
+
+pub fn cancel_task(tasks_dir: &Path, task_id: &str) -> bool {
+    if let Some(mut task) = load_task(tasks_dir, task_id) {
+        task.status = "cancelled".to_string();
+        update_task_file(tasks_dir, &task);
+        true
+    } else {
+        false
+    }
 }

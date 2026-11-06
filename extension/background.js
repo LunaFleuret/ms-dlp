@@ -115,6 +115,11 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       sendResponse(res);
     });
     return true;
+  } else if (request.action === "cancel_task") {
+    sendToNativeHost({ action: "cancel_task", task_id: request.id }, (res) => {
+      sendResponse(res);
+    });
+    return true;
   } else if (request.action === "open_output_dir") {
     sendToNativeHost({ action: "open_output_dir" }, (res) => {
       sendResponse(res);

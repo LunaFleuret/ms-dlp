@@ -4,6 +4,12 @@ use serde::Deserialize;
 use std::path::Path;
 use std::process::Command;
 
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
+
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
+
 #[derive(Debug, Deserialize)]
 struct LoudnormStats {
     input_i: String,
@@ -23,16 +29,18 @@ pub fn normalize_audio_loudness(
     }
 
     println!("    [Loudness] Measuring audio loudness (Pass 1)...");
-    let pass1_output = Command::new(ffmpeg_path)
-        .args([
-            "-hide_banner",
-            "-nostats",
-            "-i", &audio_file.to_string_lossy(),
-            "-af", &format!("loudnorm=I={:.1}:LRA=11:TP=-1.0:print_format=json", target_lufs),
-            "-f", "null",
-            "-",
-        ])
-        .output()?;
+    let mut pass1_cmd = Command::new(ffmpeg_path);
+    pass1_cmd.args([
+        "-hide_banner",
+        "-nostats",
+        "-i", &audio_file.to_string_lossy(),
+        "-af", &format!("loudnorm=I={:.1}:LRA=11:TP=-1.0:print_format=json", target_lufs),
+        "-f", "null",
+        "-",
+    ]);
+    #[cfg(windows)]
+    pass1_cmd.creation_flags(CREATE_NO_WINDOW);
+    let pass1_output = pass1_cmd.output()?;
 
     let stderr = String::from_utf8_lossy(&pass1_output.stderr);
     let re = Regex::new(r#"(?s)\{\s*"input_i"\s*:.*?\}"#)?;
@@ -78,6 +86,9 @@ pub fn normalize_audio_loudness(
     };
 
     cmd.arg(&temp_norm);
+
+    #[cfg(windows)]
+    cmd.creation_flags(CREATE_NO_WINDOW);
 
     let status = cmd.status()?;
     if status.success() && temp_norm.is_file() {
