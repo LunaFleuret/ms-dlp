@@ -11,15 +11,15 @@ set "WORKSPACE_DIR=%SCRIPT_DIR%..\"
 set "MANIFEST_PATH=%SCRIPT_DIR%com.msdlp.downloader.json"
 set "LAUNCHER_PATH=%SCRIPT_DIR%host_launcher.bat"
 
-echo [1/3] Checking and setting up required dependencies...
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%WORKSPACE_DIR%download_music.ps1" -SetupOnly
-if %ERRORLEVEL% neq 0 (
+echo [1/3] Checking executable and dependencies...
+if not exist "%WORKSPACE_DIR%ms-dlp.exe" (
     echo.
-    echo [ERROR] Dependency setup failed. Please check your internet connection and try again.
+    echo [ERROR] ms-dlp.exe not found!
+    echo Please compile the project first using "cargo build --release".
     pause
-    exit /b %ERRORLEVEL%
+    exit /b 1
 )
-echo [OK] Dependencies are ready.
+echo [OK] ms-dlp.exe is ready.
 echo.
 
 :: Escape backslashes for JSON

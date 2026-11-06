@@ -1,19 +1,21 @@
 @echo off
 setlocal
 chcp 65001 >nul
-title YouTube Music Downloader
+title Universal Music Downloader
 
-echo ========================================
-echo   YouTube Music Downloader
-echo ========================================
-echo.
-
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0download_music.ps1"
+set "RUST_EXE=%~dp0ms-dlp.exe"
+if exist "%RUST_EXE%" (
+    "%RUST_EXE%" %*
+) else (
+    echo [ERROR] ms-dlp.exe not found!
+    echo Please run "cargo build --release" to generate the executable.
+    pause
+    exit /b 1
+)
 
 if %ERRORLEVEL% neq 0 (
     echo.
-    echo Script ended with an error code: %ERRORLEVEL%
+    echo Process ended with an error code: %ERRORLEVEL%
+    pause
 )
-
-echo.
-pause
+endlocal

@@ -1,6 +1,6 @@
 # ms-dlp
 
-YouTubeなどから音源をダウンロードし、正方形ジャケット画像、メタデータおよび歌詞を自動埋め込みする音楽特化ダウンローダー（yt-dlp,ffmpegを使用しています）
+YouTubeなどから音源をダウンロードし、正方形ジャケット画像、メタデータおよび歌詞を自動埋め込みする音楽特化ダウンローダー（Rust製ネイティブコア / yt-dlp, ffmpegを使用しています）
 
 PCならFoobar2000、スマホであればApple Music、Spotifyなどのサービスにアップロードし、歌ってみた動画などをどこでも聞けるようになります。（その際、サービスよっては有効形式が異なるので注意して下さい。下記）
 
@@ -24,19 +24,22 @@ PCならFoobar2000、スマホであればApple Music、Spotifyなどのサー�
 
 ## 主な特徴
 
+- **Rustネイティブ高速動作**: 単一のネイティブバイナリ（`ms-dlp.exe`）により起動オーバーヘッドをミリ秒単位に極小化
 - **5並列分割ダウンロード**: 長尺動画も高速安定保存
+- **EBU R128 音量自動均一化**: 国際規格（-14 LUFS / True Peak -1.0 dBTP）の2パス解析により、音質劣化・音割れなく曲ごとの音量差を自動解消
 - **オリジナルメタデータの保持**: 取得先のタイトルおよびアーティスト情報（投稿者/チャンネル名）を加工せずタグ・ファイル名に忠実に反映、保存します
 - **二段階ハイブリッド歌詞埋め込み**:
   1. YouTubeの公式字幕（日本語優先）から歌詞を自動抽出・整形
   2. 字幕がない場合、オンライン歌詞データベース（LRCLIB）を自動検索
-- **正方形ジャケット処理**:
+- **正方形ジャケット処理 & 救出システム**:
   - **既に1:1サムネイルの場合**: トリミングや再エンコードを一切行わず、そのまま埋め込み
   - **16:9等の非正方形サムネイル**: 設定に応じて自動加工（1:1圧縮 `stretch` / 左右切り落とし `crop` / ぼかし背景敷き `blur` / 無加工 `original`）
+  - **多段サムネイル救出**: 取得漏れ時もYouTube CDN直接ダウンロード（0.1秒）やクライアント切り替えリトライで確実にジャケットを確保
 - **プレイリスト誤爆防止**: YouTubeのMix・ラジオ再生リスト（`list=RD...` / `list=UL...`）等のパラメータを自動検出・無効化し、再生中の単曲のみを保存
 - **2つの利用スタイル**:
   1. **ブラウザ拡張機能**: ブラウザツールバーからワンクリックで完全バックグラウンド保存。リアルタイム進捗バー・タスク管理・ワンクリック出力フォルダ移動に対応
-  2. **CUIスクリプト（`download_music.bat` / `.ps1`）**: ターミナルからURLを入力してダウンロード
-- **設定変更**: 出力音声形式（M4A/MP3/FLAC/Opus等）、ジャケット加工モード、歌詞埋め込みのON/OFFを設定
+  2. **CUI（`ms-dlp.exe` / `download_music.bat`）**: ターミナルからURLを入力してダウンロード
+- **設定変更**: 出力音声形式（M4A/MP3/FLAC/Opus等）、音量均一化のON/OFF、ジャケット加工モード、歌詞埋め込みのON/OFFを設定
 - **Cookie対応**: `private/` フォルダ内の `cookies.txt` を自動認識し、年齢制限動画等にも対応
 
 ---
@@ -45,8 +48,10 @@ PCならFoobar2000、スマホであればApple Music、Spotifyなどのサー�
 
 ```text
 ms-dlp/
+├── ms-dlp.exe                <- メイン実行ファイル (Rust製ネイティブバイナリ)
 ├── download_music.bat        <- CUI起動用バッチ (ダブルクリックで実行)
-├── download_music.ps1        <- メイン処理スクリプト (PowerShell)
+├── Cargo.toml / Cargo.lock   <- Rustプロジェクト定義
+├── src/                      <- Rustソースコード
 ├── config.json               <- カスタマイズ設定ファイル
 ├── README.md                 <- 本ドキュメント
 ├── .gitignore                <- Git除外設定
@@ -57,15 +62,16 @@ ms-dlp/
 │   ├── background.js         <- サービスワーカー (Native Messaging通信)
 │   ├── assets/               <- UIスクリーンショット画像等
 │   └── icons/                <- アイコン画像
-├── native_host/              <- ネイティブメッセージングホスト (Python)
-│   ├── host.py               <- ブラウザとの stdio 通信・タスク管理
-│   ├── worker.py             <- バックグラウンド実行ワーカー
+├── native_host/              <- ネイティブメッセージングホスト設定
+│   ├── host_launcher.bat     <- ブラウザ連携ランチャー (ms-dlp.exeを呼び出し)
 │   ├── install_host.bat      <- レジストリ登録バッチ (初回1回のみ実行)
 │   ├── uninstall_host.bat    <- レジストリ登録解除バッチ
 │   └── tasks/                <- タスク状態 JSON 一時格納ディレクトリ
-├── bin/                      <- 実行モジュール配置フォルダ
+├── bin/                      <- 外部ツール配置フォルダ
 │   ├── yt-dlp.exe
-│   └── ffmpeg.exe
+│   ├── ffmpeg.exe
+│   ├── ffprobe.exe
+│   └── AtomicParsley.exe
 ├── private/                  <- Cookie等の個人設定 (Git除外)
 │   └── cookies.txt (任意配置)
 └── output/                   <- 完成した音楽ファイルの保存先
@@ -96,9 +102,9 @@ ms-dlp/
 
 ---
 
-### 2. バッチ / PowerShell スクリプト（CUI）を使う
+### 2. CUI（`ms-dlp.exe` / `download_music.bat`）を使う
 
-1. `download_music.bat` をダブルクリックして実行します。
+1. `ms-dlp.exe` または `download_music.bat` をダブルクリックして実行します（ターミナルから `ms-dlp.exe <URL>` を直接指定して起動することも可能です）。
 2. URLを入力して `Enter` を押すと、ダウンロードおよびタグ付けが実行されます（複数のURLをスペース区切りで入力すれば連続処理されます）。
 3. 空欄のまま `Enter` を押すと終了します。
 
@@ -115,12 +121,18 @@ ms-dlp/
   "cover_mode_non_square": "stretch",
   "embed_lyrics": true,
   "concurrent_fragments": 5,
-  "output_folder": "output"
+  "output_folder": "output",
+  "auto_crop_shorts": true,
+  "normalize_audio": true,
+  "target_loudness_lufs": -14.0
 }
 ```
 
 - **`audio_format`**: 出力形式（`"m4a"`, `"mp3"`, `"flac"`, `"opus"` 等）
 - **`audio_quality`**: 音質設定（`"0"` は最高品質）
+- **`normalize_audio`**: EBU R128 音量自動均一化（`true` / `false`）
+- **`target_loudness_lufs`**: 目標ラウドネス値（デフォルト: `-14.0` LUFS、Apple Music推奨: `-16.0`）
+- **`auto_crop_shorts`**: YouTube Shorts動画の自動正方形クロップ（`true` / `false`）
 - **`cover_mode_non_square`**: 元画像が1:1正方形でない場合の処理方式
   - `"stretch"` : （デフォルト）無理やり1:1に圧縮して全体を収める
   - `"crop"`    : 左右を均等に切り落として1:1正方形にする

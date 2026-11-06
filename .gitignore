@@ -5,6 +5,7 @@ bin/*
 
 # Rust build artifacts
 target/
+*.pdb
 
 # Sensitive & Private configurations (Cookies etc.)
 private/*

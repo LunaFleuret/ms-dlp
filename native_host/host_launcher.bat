@@ -1,9 +1,10 @@
 @echo off
 setlocal
-set "PORTABLE_PY=%~dp0..\bin\python\python.exe"
-if exist "%PORTABLE_PY%" (
-    "%PORTABLE_PY%" "%~dp0host.py"
+set "RUST_EXE=%~dp0..\ms-dlp.exe"
+if exist "%RUST_EXE%" (
+    "%RUST_EXE%" --native-host
 ) else (
-    python "%~dp0host.py"
+    echo [ERROR] ms-dlp.exe not found! >&2
+    exit /b 1
 )
 endlocal
