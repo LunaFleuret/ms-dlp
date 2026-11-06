@@ -44,8 +44,17 @@ pub fn embed_tags_and_artwork(
                 #[cfg(windows)]
                 cmd.creation_flags(CREATE_NO_WINDOW);
 
-                let status = cmd.status()?;
-                return Ok(status.success());
+                match cmd.status() {
+                    Ok(status) if status.success() => {
+                        return Ok(true);
+                    }
+                    Ok(status) => {
+                        println!("    [Warning] AtomicParsley exited with status: {}. Falling back to ffmpeg...", status);
+                    }
+                    Err(e) => {
+                        println!("    [Warning] AtomicParsley failed to execute: {}. Falling back to ffmpeg...", e);
+                    }
+                }
             }
         }
     }
@@ -89,6 +98,9 @@ pub fn embed_tags_and_artwork(
 
     let status = cmd.status()?;
     if status.success() && temp_tagged.is_file() {
+        if audio_file.is_file() {
+            let _ = std::fs::remove_file(audio_file);
+        }
         std::fs::rename(&temp_tagged, audio_file)?;
         Ok(true)
     } else {
