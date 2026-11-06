@@ -384,6 +384,139 @@ function Get-ImageDimensions {
     }
 }
 
+function Test-ValidImage {
+    param(
+        [string]$ImagePath,
+        [string]$FfprobePath
+    )
+
+    if (-not $ImagePath -or -not (Test-Path -LiteralPath $ImagePath)) {
+        return $false
+    }
+
+    try {
+        $item = Get-Item -LiteralPath $ImagePath -ErrorAction Stop
+        if ($item.Length -lt 1024) {
+            return $false
+        }
+    } catch {
+        return $false
+    }
+
+    $dims = Get-ImageDimensions -ImagePath $ImagePath -FfprobePath $FfprobePath
+    if ($dims -and $dims.Width -gt 0 -and $dims.Height -gt 0) {
+        return $true
+    }
+
+    return $false
+}
+
+function Download-YoutubeCdnThumbnail {
+    param(
+        [string]$Url,
+        [string]$DestinationPath,
+        [string]$FfprobePath
+    )
+
+    $videoId = $null
+    if ($Url -match '(?:youtube\.com/(?:watch\?.*v=|shorts/)|youtu\.be/)([a-zA-Z0-9_-]{11})') {
+        $videoId = $Matches[1]
+    }
+
+    if (-not $videoId) { return $null }
+
+    $qualities = @("maxresdefault", "sddefault", "hqdefault")
+    foreach ($q in $qualities) {
+        $cdnUrl = "https://i.ytimg.com/vi/$videoId/$q.jpg"
+        try {
+            Write-Host "    -> Attempting YouTube CDN thumbnail: $q.jpg..." -ForegroundColor DarkCyan
+            [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+            Invoke-WebRequest -Uri $cdnUrl -OutFile $DestinationPath -TimeoutSec 6 -UseBasicParsing -ErrorAction Stop
+
+            if (Test-ValidImage -ImagePath $DestinationPath -FfprobePath $FfprobePath) {
+                Write-Host "    [OK] YouTube CDN thumbnail acquired ($q.jpg)" -ForegroundColor Green
+                return $DestinationPath
+            }
+        } catch {
+            # 404 or network error, fallback to next quality
+        }
+    }
+
+    if (Test-Path -LiteralPath $DestinationPath) {
+        Remove-Item -LiteralPath $DestinationPath -Force -ErrorAction SilentlyContinue
+    }
+    return $null
+}
+
+function Resolve-ThumbnailAndMetadata {
+    param(
+        [string]$SessionDir,
+        [string]$Url,
+        [hashtable]$Tools,
+        [array]$CookieArgs
+    )
+
+    # 1. Check existing thumbnail in session directory
+    $thumbFile = Get-ChildItem -Path $SessionDir -File |
+        Where-Object { $_.Extension -in @(".jpg", ".jpeg", ".png", ".webp") } |
+        Select-Object -First 1
+
+    if ($thumbFile -and (Test-ValidImage -ImagePath $thumbFile.FullName -FfprobePath $Tools.Ffprobe)) {
+        return $thumbFile.FullName
+    }
+
+    Write-Host "    [Cover Alert] Thumbnail missing or incomplete. Initiating recovery..." -ForegroundColor Yellow
+
+    # 2. Priority 1: Direct YouTube CDN download (instant & high success rate)
+    if ($Url -match "youtube\.com|youtu\.be") {
+        $cdnTarget = Join-Path $SessionDir "cdn_thumbnail.jpg"
+        $cdnResult = Download-YoutubeCdnThumbnail -Url $Url -DestinationPath $cdnTarget -FfprobePath $Tools.Ffprobe
+        if ($cdnResult) {
+            return $cdnResult
+        }
+    }
+
+    # 3. Priority 2: yt-dlp client rotation retry (up to 5 retries)
+    $clients = @("android", "ios", "tv", "web", "mweb")
+    $fileTemplate = Join-Path $SessionDir "%(title)s.%(ext)s"
+
+    for ($i = 0; $i -lt $clients.Count; $i++) {
+        $client = $clients[$i]
+        $attempt = $i + 1
+        Write-Host "    -> [Retry $attempt/$($clients.Count)] Fetching thumbnail with client '$client'..." -ForegroundColor DarkCyan
+
+        $retryArgs = @(
+            "--skip-download",
+            "--write-thumbnail",
+            "--convert-thumbnails", "jpg",
+            "--write-info-json",
+            "--no-playlist",
+            "--ffmpeg-location", $Tools.Ffmpeg,
+            "--extractor-args", "youtube:player_client=$client",
+            "-o", $fileTemplate,
+            $Url
+        ) + $CookieArgs
+
+        try {
+            & $Tools.YtDlp @retryArgs 2>&1 | Out-Null
+        } catch {}
+
+        $foundThumb = Get-ChildItem -Path $SessionDir -File |
+            Where-Object { $_.Extension -in @(".jpg", ".jpeg", ".png", ".webp") } |
+            Select-Object -First 1
+
+        if ($foundThumb -and (Test-ValidImage -ImagePath $foundThumb.FullName -FfprobePath $Tools.Ffprobe)) {
+            Write-Host "    [OK] Thumbnail recovered via client '$client' on retry $attempt." -ForegroundColor Green
+            return $foundThumb.FullName
+        }
+
+        Start-Sleep -Seconds 1
+    }
+
+    Write-Host "    [ERROR] Failed to acquire thumbnail after all retries." -ForegroundColor Red
+    return $null
+}
+
 function Format-CoverArt {
     param(
         [string]$FfmpegPath,
@@ -806,7 +939,9 @@ function Main {
                     continue
                 }
 
-                Write-Host "  [2/5] Reading source metadata..." -ForegroundColor White
+                Write-Host "  [2/5] Reading source metadata & verifying thumbnail..." -ForegroundColor White
+                $resolvedThumbPath = Resolve-ThumbnailAndMetadata -SessionDir $sessionDir -Url $url -Tools $tools -CookieArgs $cookieArgs
+
                 $jsonFile = Get-ChildItem -Path $sessionDir -Filter "*.info.json" | Select-Object -First 1
                 $finalTitle = [System.IO.Path]::GetFileNameWithoutExtension($audioFile.Name)
                 $finalArtist = "Unknown Artist"
@@ -831,12 +966,8 @@ function Main {
                 Write-Host "    Artist : $finalArtist" -ForegroundColor Green
 
                 Write-Host "  [3/5] Checking and formatting cover art..." -ForegroundColor White
-                $thumbFile = Get-ChildItem -Path $sessionDir -File |
-                    Where-Object { $_.Extension -in @(".jpg", ".jpeg", ".png", ".webp") } |
-                    Select-Object -First 1
-
                 $processedCover = $null
-                if ($thumbFile) {
+                if ($resolvedThumbPath -and (Test-Path -LiteralPath $resolvedThumbPath)) {
                     $coverOut = Join-Path $sessionDir "cover_square.jpg"
                     $nonSquareMode = $Script:Config["cover_mode_non_square"]
                     $autoCrop = if ($null -ne $Script:Config["auto_crop_shorts"]) { [bool]$Script:Config["auto_crop_shorts"] } else { $true }
@@ -847,11 +978,11 @@ function Main {
 
                     $processedCover = Format-CoverArt -FfmpegPath $tools.Ffmpeg `
                                                       -FfprobePath $tools.Ffprobe `
-                                                      -InputImage $thumbFile.FullName `
+                                                      -InputImage $resolvedThumbPath `
                                                       -OutputImage $coverOut `
                                                       -NonSquareMode $nonSquareMode
                 } else {
-                    Write-Host "    No thumbnail found; skipping cover art." -ForegroundColor Yellow
+                    Write-Host "    [Cover Warning] No valid thumbnail acquired; skipping cover art." -ForegroundColor Yellow
                 }
 
                 $lyricsFile = $null

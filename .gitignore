@@ -31,6 +31,7 @@ logs/
 *.log
 
 # OS & Editor files
+desktop.ini
 .DS_Store
 Thumbs.db
 .vscode/
