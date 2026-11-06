@@ -2,6 +2,7 @@
   "manifest_version": 3,
   "name": "ms-dlp 音楽ダウンローダー",
   "version": "1.0.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzwemeUb5McsncwM0GRzihTLEQQvx8ne9ngOypU5PLxeDbGfaZ/5PGMtA4Ev5Ewf4mpVlgxUtq/t7dGyVlcAufRTh1MqkiqzZq8AIYeaq0bgSfMwlOjZlBCnhZrn2YoMjFkUGqiAncXHfWcHSuqTjDsJ5WT58RHg/ZKDgyITWEWGe8PdDDSdZgdIan7LabRzmEUdY5nN1itSc2h09WD2jp0Q9iwnfNaeba/x3LA8o4x6PUoSkbDFAgQ7RQPITL24MCHnktX33nIx68aGkDoJUaXABV8G3wyGEgDaArnj3uEjyaAT8doA0h6IQG5AuASppQZXrxG2WrmHMPNdvsbXEGQIDAQAB",
   "description": "YouTube, X, TikTok等から高音質音楽（正方形カバー・歌詞埋め込み）をバックグラウンドでダウンロードします。",
   "permissions": [
     "activeTab",

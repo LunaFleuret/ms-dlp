@@ -2,14 +2,26 @@ const HOST_NAME = "com.msdlp.downloader";
 
 const notifiedTaskStates = new Map();
 
+// アラームはブラウザ再起動で消えることがあるため、起動時にも存在を保証する
+function ensurePollAlarm() {
+  chrome.alarms.get("check_msdlp_tasks", (alarm) => {
+    if (!alarm) {
+      chrome.alarms.create("check_msdlp_tasks", { periodInMinutes: 0.5 });
+    }
+  });
+}
+
 chrome.runtime.onInstalled.addListener(() => {
   setupMenus();
-  chrome.alarms.create("check_msdlp_tasks", { periodInMinutes: 0.1 });
+  ensurePollAlarm();
 });
 
 chrome.runtime.onStartup.addListener(() => {
   setupMenus();
+  ensurePollAlarm();
 });
+
+ensurePollAlarm();
 
 function setupMenus() {
   chrome.contextMenus.removeAll(() => {

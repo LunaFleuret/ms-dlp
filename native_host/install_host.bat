@@ -33,10 +33,7 @@ echo [2/3] Generating host manifest...
     echo   "path": "!ESCAPED_EXE_PATH!",
     echo   "type": "stdio",
     echo   "allowed_origins": [
-    echo     "chrome-extension://hmdananhlfdheiidbkneleofeelhckbn/",
-    echo     "chrome-extension://pdaiillmonnbnkjfncclpkebijgalafg/",
-    echo     "chrome-extension://okjhdfkigofpbbadadokbfdijknjocla/",
-    echo     "chrome-extension://iblkegnjnjoclaokjhdfkigofpbbadad/"
+    echo     "chrome-extension://ijeapgljimeaenemndconhapinpmjmin/"
     echo   ]
     echo }
 ) > "%MANIFEST_PATH%"
