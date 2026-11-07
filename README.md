@@ -7,17 +7,17 @@ PCならFoobar2000、スマホであればApple Music、Spotifyなどのサー�
 ブラウザ拡張機能 と CUI の2つのインターフェースに対応しています。
 
 <p align="center">
-  <img src="extension/assets/screenshot1.png" width="360" alt="ダウンロード画面">
+  <img src="msdlp-extension/assets/screenshot1.png" width="360" alt="ダウンロード画面">
 
-<img src="extension/assets/screenshot2.png" width="360" alt="タスク一覧画面">
+<img src="msdlp-extension/assets/screenshot2.png" width="360" alt="タスク一覧画面">
 </p>
 
 <p align="center">
-  <img src="extension/assets/screenshot3.png" alt="設定画面">
+  <img src="msdlp-extension/assets/screenshot3.png" alt="設定画面">
 </p>
 
 <p align="center">
-  <img src="extension/assets/sample.png" alt="サンプル画面">
+  <img src="msdlp-extension/assets/sample.png" alt="サンプル画面">
 </p>
 
 ---
@@ -55,7 +55,7 @@ ms-dlp/
 ├── config.json               <- カスタマイズ設定ファイル
 ├── README.md                 <- 本ドキュメント
 ├── .gitignore                <- Git除外設定
-├── extension/                <- ブラウザ拡張機能 (Chrome / Edge / Brave 等)
+├── msdlp-extension/          <- ブラウザ拡張機能 (Chrome / Edge / Brave 等)
 │   ├── manifest.json         <- 拡張機能定義 (Manifest V3)
 │   ├── popup.html/.js/.css   <- ポップアップ操作・タスク進捗管理UI
 │   ├── options.html/.js/.css <- ダウンロード環境設定画面 (Options)
@@ -89,7 +89,7 @@ ms-dlp/
 
 1. `native_host/install_host.bat` をダブルクリックして実行します（Chrome / Edge / Brave 等のレジストリにホストが登録されます）。`native_host/`フォルダ直下に配置されています。
 2. ブラウザのアドレスバーに `chrome://extensions`（Edgeは `edge://extensions`）と入力して開きます。
-3. 画面右上の「デベロッパー モード」をオンにし、「パッケージ化されていない拡張機能を読み込む」から `ms-dlp/extension` フォルダを選択します。
+3. 画面右上の「デベロッパー モード」をオンにし、「パッケージ化されていない拡張機能を読み込む」から `ms-dlp/msdlp-extension` フォルダを選択します。
 
 #### 日常の利用
 
