@@ -41,6 +41,19 @@ if not defined TARGET_URL exit /b 0
 for /f "tokens=* delims= " %%A in ("!TARGET_URL!") do set "TARGET_URL=%%A"
 if "!TARGET_URL!"=="" exit /b 0
 
+echo.
+echo Select cover art formatting for non-square thumbnails:
+echo   [1] Stretch to 1:1 square
+echo   [2] Crop sides to 1:1 square
+choice /c 12 /n /m "Enter your choice [1 or 2]: "
+if errorlevel 2 (
+    set "MSDLP_COVER_MODE=crop"
+    echo [INFO] Cover art mode: Crop - Trim sides
+) else (
+    set "MSDLP_COVER_MODE=stretch"
+    echo [INFO] Cover art mode: Stretch
+)
+
 set "COOKIE_OPT="
 if exist "%~dp0private\www.youtube.com_cookies.txt" (
     set COOKIE_OPT=--cookies "%~dp0private\www.youtube.com_cookies.txt"
@@ -59,6 +72,7 @@ if exist "%TITLE_FILE%" del /f /q "%TITLE_FILE%"
 
 set "PL_NAME="
 if exist "%TITLE_FILE%" (
+    powershell -NoProfile -Command "if (Test-Path '%TITLE_FILE%') { $raw = (Get-Content -Path '%TITLE_FILE%' -Encoding UTF8 -Raw).Trim(); $safe = [regex]::Replace($raw, '[\\/:*?\""<>|]', '_'); [IO.File]::WriteAllText('%TITLE_FILE%', $safe, [System.Text.Encoding]::UTF8) }"
     set /p PL_NAME=<"%TITLE_FILE%"
     del /f /q "%TITLE_FILE%"
 )
@@ -66,17 +80,6 @@ if exist "%TITLE_FILE%" (
 if not defined PL_NAME set "PL_NAME=Playlist"
 for /f "tokens=* delims= " %%A in ("!PL_NAME!") do set "PL_NAME=%%A"
 if "!PL_NAME!"=="" set "PL_NAME=Playlist"
-
-:: Sanitize playlist title for safe Windows folder naming
-set "PL_NAME=!PL_NAME:/=_!"
-set "PL_NAME=!PL_NAME:\=_!"
-set "PL_NAME=!PL_NAME::=_!"
-set "PL_NAME=!PL_NAME:*=_!"
-set "PL_NAME=!PL_NAME:?=_!"
-set "PL_NAME=!PL_NAME:<=_!"
-set "PL_NAME=!PL_NAME:>=_!"
-set "PL_NAME=!PL_NAME:|=_!"
-set "PL_NAME=!PL_NAME:"=_!"
 
 echo [INFO] Playlist Name: !PL_NAME!
 echo [INFO] Fetching track list from playlist...
@@ -155,6 +158,8 @@ for /f "usebackq tokens=*" %%U in ("%LIST_FILE%") do (
         echo ------------------------------------------------------
         echo [Progress: !CURRENT! / %TOTAL%] Processing: %%U
         echo ------------------------------------------------------
+        set "MSDLP_TRACK_NUM=!CURRENT!"
+        set "MSDLP_TRACK_TOTAL=%TOTAL%"
         "%RUST_EXE%" "%%U"
         
         if exist "!PLAYLIST_FOLDER!" (

@@ -74,19 +74,33 @@ impl Default for Config {
 impl Config {
     pub fn load_or_create<P: AsRef<Path>>(config_path: P) -> Self {
         let path = config_path.as_ref();
-        if path.exists() {
+        let mut cfg = if path.exists() {
             if let Ok(content) = std::fs::read_to_string(path) {
-                if let Ok(cfg) = serde_json::from_str::<Config>(&content) {
-                    return cfg;
+                if let Ok(c) = serde_json::from_str::<Config>(&content) {
+                    c
+                } else {
+                    Config::default()
                 }
+            } else {
+                Config::default()
+            }
+        } else {
+            let default_cfg = Config::default();
+            if let Ok(json_str) = serde_json::to_string_pretty(&default_cfg) {
+                let _ = std::fs::write(path, json_str);
+            }
+            default_cfg
+        };
+
+        // Allow temporary runtime override via environment variable without modifying config.json
+        if let Ok(val) = std::env::var("MSDLP_COVER_MODE") {
+            let mode = val.trim().to_lowercase();
+            if mode == "stretch" || mode == "crop" || mode == "blur" || mode == "original" {
+                cfg.cover_mode_non_square = mode;
             }
         }
 
-        let default_cfg = Config::default();
-        if let Ok(json_str) = serde_json::to_string_pretty(&default_cfg) {
-            let _ = std::fs::write(path, json_str);
-        }
-        default_cfg
+        cfg
     }
 
     #[allow(dead_code)]

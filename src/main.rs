@@ -41,12 +41,23 @@ async fn run_cli(root_dir: &Path, args: &[String]) -> Result<()> {
     let config_path = root_dir.join("config.json");
     let config = Config::load_or_create(&config_path);
 
+    let cover_notice = if let Ok(val) = std::env::var("MSDLP_COVER_MODE") {
+        let v = val.trim().to_lowercase();
+        if v == "stretch" || v == "crop" || v == "blur" || v == "original" {
+            format!("{} (Env Override)", config.cover_mode_non_square)
+        } else {
+            config.cover_mode_non_square.clone()
+        }
+    } else {
+        config.cover_mode_non_square.clone()
+    };
+
     println!(
         "Config : Format = {}, Normalize = {} ({:.1} LUFS), NonSquareCover = {}, Lyrics = {}, Threads = {}",
         config.audio_format,
         config.normalize_audio,
         config.target_loudness_lufs,
-        config.cover_mode_non_square,
+        cover_notice,
         config.embed_lyrics,
         config.concurrent_fragments
     );
@@ -214,7 +225,8 @@ where
             mode = "crop";
         }
 
-        if let Ok(p) = cover::format_cover_art(&tools.ffmpeg, &thumb_path, &cover_out, mode) {
+        let is_youtube = url.contains("youtube.com") || url.contains("youtu.be");
+        if let Ok(p) = cover::format_cover_art(&tools.ffmpeg, &thumb_path, &cover_out, mode, is_youtube) {
             processed_cover = Some(p);
         }
     } else {
@@ -261,12 +273,32 @@ where
 
     let clean_title = title.replace(['\\', '/', ':', '*', '?', '"', '<', '>', '|'], "_");
     let ext = audio_file.extension().and_then(|s| s.to_str()).unwrap_or(&config.audio_format);
-    let mut final_dest = output_dir.join(format!("{}.{}", clean_title, ext));
+
+    let track_num: Option<u32> = std::env::var("MSDLP_TRACK_NUM").ok().and_then(|v| v.trim().parse().ok());
+    let track_total: Option<u32> = std::env::var("MSDLP_TRACK_TOTAL").ok().and_then(|v| v.trim().parse().ok());
+
+    let file_stem = if let Some(num) = track_num {
+        let width = track_total.map(|t| t.to_string().len().max(2)).unwrap_or(2);
+        format!("{:0width$}_{}", num, clean_title, width = width)
+    } else {
+        clean_title.clone()
+    };
+
+    let mut final_dest = output_dir.join(format!("{}.{}", file_stem, ext));
 
     let mut counter = 1;
     while final_dest.exists() {
-        final_dest = output_dir.join(format!("{} ({}).{}", clean_title, counter, ext));
+        final_dest = output_dir.join(format!("{} ({}).{}", file_stem, counter, ext));
         counter += 1;
+    }
+
+    let track_info = track_num.map(|n| (n, track_total));
+    if let Some((n, tot_opt)) = track_info {
+        if let Some(tot) = tot_opt {
+            println!("    Track  : {}/{}", n, tot);
+        } else {
+            println!("    Track  : {}", n);
+        }
     }
 
     let _ = tagger::embed_tags_and_artwork(
@@ -279,6 +311,7 @@ where
         &artist,
         url,
         &config.audio_format,
+        track_info,
     );
 
     std::fs::rename(&audio_file, &final_dest)?;

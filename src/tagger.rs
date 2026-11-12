@@ -18,6 +18,7 @@ pub fn embed_tags_and_artwork(
     artist: &str,
     comment_url: &str,
     format: &str,
+    track: Option<(u32, Option<u32>)>,
 ) -> Result<bool> {
     if format == "m4a" {
         if let Some(ap_path) = atomic_parsley_path {
@@ -28,6 +29,14 @@ pub fn embed_tags_and_artwork(
                     .args(["--artist", artist])
                     .args(["--comment", comment_url])
                     .arg("--overWrite");
+
+                if let Some((num, tot_opt)) = track {
+                    let track_str = match tot_opt {
+                        Some(tot) => format!("{}/{}", num, tot),
+                        None => format!("{}", num),
+                    };
+                    cmd.args(["--tracknum", &track_str]);
+                }
 
                 if let Some(cover) = cover_image {
                     if cover.is_file() {
@@ -84,6 +93,14 @@ pub fn embed_tags_and_artwork(
         "-metadata", &format!("artist={}", artist),
         "-metadata", &format!("comment={}", comment_url),
     ]);
+
+    if let Some((num, tot_opt)) = track {
+        let track_str = match tot_opt {
+            Some(tot) => format!("{}/{}", num, tot),
+            None => format!("{}", num),
+        };
+        cmd.args(["-metadata", &format!("track={}", track_str)]);
+    }
 
     if let Some(lyrics) = lyrics_file {
         if let Ok(lyr_content) = std::fs::read_to_string(lyrics) {

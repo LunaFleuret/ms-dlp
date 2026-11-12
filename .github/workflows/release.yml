@@ -1,0 +1,91 @@
+name: Release Build
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build ms-dlp (Release)
+        run: |
+          cargo build --release
+
+      - name: Download & Prepare Helper Tools (yt-dlp, FFmpeg, AtomicParsley)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path "dist_bin" -Force | Out-Null
+
+          # 1. yt-dlp
+          Write-Host "Downloading yt-dlp.exe..."
+          curl.exe -fL -s -o "dist_bin\yt-dlp.exe" "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
+
+          # 2. FFmpeg (Extract only ffmpeg.exe to keep archive lightweight)
+          Write-Host "Downloading FFmpeg package..."
+          $ffmpegZip = "$env:TEMP\ffmpeg.zip"
+          $ffmpegExt = "$env:TEMP\ffmpeg_ext"
+          curl.exe -fL -s -o $ffmpegZip "https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
+          Expand-Archive -Path $ffmpegZip -DestinationPath $ffmpegExt -Force
+          $ffmpegExe = Get-ChildItem -Path $ffmpegExt -Filter "ffmpeg.exe" -Recurse | Select-Object -First 1
+          Copy-Item $ffmpegExe.FullName -Destination "dist_bin\ffmpeg.exe" -Force
+          Remove-Item $ffmpegZip -Force -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force $ffmpegExt -ErrorAction SilentlyContinue
+
+          # 3. AtomicParsley
+          Write-Host "Downloading AtomicParsley..."
+          $apZip = "$env:TEMP\atomicparsley.zip"
+          $apExt = "$env:TEMP\atomicparsley_ext"
+          curl.exe -fL -s -o $apZip "https://github.com/wez/atomicparsley/releases/latest/download/AtomicParsleyWindows.zip"
+          Expand-Archive -Path $apZip -DestinationPath $apExt -Force
+          $apExe = Get-ChildItem -Path $apExt -Filter "AtomicParsley.exe" -Recurse | Select-Object -First 1
+          Copy-Item $apExe.FullName -Destination "dist_bin\AtomicParsley.exe" -Force
+          Remove-Item $apZip -Force -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force $apExt -ErrorAction SilentlyContinue
+
+      - name: Package Distribution Archive
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $pkgDir = "ms-dlp"
+          New-Item -ItemType Directory -Path $pkgDir -Force | Out-Null
+          New-Item -ItemType Directory -Path "$pkgDir\bin" -Force | Out-Null
+          New-Item -ItemType Directory -Path "$pkgDir\native_host" -Force | Out-Null
+          New-Item -ItemType Directory -Path "$pkgDir\output" -Force | Out-Null
+
+          Copy-Item "target\release\ms-dlp.exe" -Destination "$pkgDir\ms-dlp.exe" -Force
+          Copy-Item "dist_bin\*" -Destination "$pkgDir\bin" -Recurse -Force
+          Copy-Item "msdlp-extension" -Destination "$pkgDir\" -Recurse -Force
+          Copy-Item "config.json" -Destination "$pkgDir\config.json" -Force
+          Copy-Item "setup.bat" -Destination "$pkgDir\setup.bat" -Force
+          Copy-Item "download.bat" -Destination "$pkgDir\download.bat" -Force
+          Copy-Item "download_playlist.bat" -Destination "$pkgDir\download_playlist.bat" -Force
+          Copy-Item "README.md" -Destination "$pkgDir\README.md" -Force
+          Copy-Item "LICENSE" -Destination "$pkgDir\LICENSE" -Force
+          Copy-Item "THIRD_PARTY_LICENSES.txt" -Destination "$pkgDir\THIRD_PARTY_LICENSES.txt" -Force
+
+          $zipNameWithTag = "ms-dlp-$tag-windows-x64.zip"
+          $zipNameFixed = "ms-dlp-windows-x64.zip"
+          Compress-Archive -Path "$pkgDir\*" -DestinationPath $zipNameWithTag -Force
+          Copy-Item $zipNameWithTag -Destination $zipNameFixed -Force
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ms-dlp-*-windows-x64.zip
+            ms-dlp-windows-x64.zip
+          draft: false
+          prerelease: false
+          generate_release_notes: true

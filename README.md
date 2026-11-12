@@ -7,6 +7,12 @@ PCならFoobar2000、スマホであればApple Music、Spotifyなどのサー�
 ブラウザ拡張機能 と CUI の2つのインターフェースに対応しています。
 
 <p align="center">
+  <a href="https://github.com/LunaFleuret/ms-dlp/releases/latest/download/ms-dlp-windows-x64.zip">
+    <img src="https://img.shields.io/badge/Download-ms--dlp%20(Windows%20ZIP)-2563eb?style=for-the-badge&logo=windows&logoColor=white" alt="Download Latest Release">
+  </a>
+</p>
+
+<p align="center">
   <img src="msdlp-extension/assets/screenshot1.png" width="360" alt="ダウンロード画面">
 
 <img src="msdlp-extension/assets/screenshot2.png" width="360" alt="タスク一覧画面">
@@ -84,9 +90,9 @@ ms-dlp/
 ## 初回セットアップ（`setup.bat`）
 
 ms-dlpのすべての機能（ブラウザ拡張機能・CUI・プレイリスト一括保存）を利用するために、最初に一度だけセットアップを実行します。
+※[Releases](https://github.com/LunaFleuret/ms-dlp/releases) のポータブル ZIP 版には必要な外部ツール（`yt-dlp` / `ffmpeg` / `AtomicParsley`）がすべて `bin/` に同梱されているため、外部ダウンロード不要で一瞬で完了します。
 
 1. ルート直下にある **`setup.bat` をダブルクリックして実行** します。
-   - **必須ツールの自動ダウンロード**: `bin/` フォルダに必要な外部ツール（`yt-dlp.exe`、`ffmpeg.exe`、`ffprobe.exe`、`AtomicParsley.exe`）を各公式最新リリースから自動取得・配置します。
    - **Native Messaging Hostの自動生成**: ブラウザ拡張機能とローカル連携するための設定マニフェスト（`com.msdlp.downloader.json`）をお使いのPC環境に合わせて自動作成します。
    - **ブラウザへの自動登録**: 各ブラウザ（Google Chrome / Microsoft Edge / Brave / Perplexity Comet）のレジストリへ連携ホストを一括登録します。
    - **フォルダの自動オープン**: 完了後、拡張機能フォルダ（`msdlp-extension`）がエクスプローラーで自動的に開きます。

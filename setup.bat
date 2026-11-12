@@ -2,7 +2,7 @@
 setlocal EnableDelayedExpansion
 
 echo ===================================================
-echo   ms-dlp Universal Setup and Tool Installer
+echo   ms-dlp Universal Setup & Browser Registration
 echo ===================================================
 echo.
 
@@ -10,12 +10,11 @@ set "ROOT_DIR=%~dp0"
 set "BIN_DIR=%ROOT_DIR%bin"
 set "HOST_DIR=%ROOT_DIR%native_host"
 set "EXE_PATH=%ROOT_DIR%ms-dlp.exe"
-set "TEMP_DIR=%ROOT_DIR%temp_setup"
 set "MANIFEST_PATH=%HOST_DIR%\com.msdlp.downloader.json"
 set "CALCULATED_ID=ijeapgljimeaenemndconhapinpmjmin"
 
-:: [1/5] Detect environment and requirements
-echo [1/5] Checking base project files...
+:: [1/4] Verify base files and bundled binaries
+echo [1/4] Verifying project files and bundled tools...
 
 if not exist "%EXE_PATH%" (
     echo.
@@ -34,111 +33,28 @@ if exist "%ROOT_DIR%msdlp-extension" (
 
 if "%EXT_DIR%"=="" (
     echo.
-    echo [ERROR] Extension folder [msdlp-extension or extension] not found.
+    echo [ERROR] Extension folder [msdlp-extension] not found.
     pause
     exit /b 1
 )
 
-if not exist "%BIN_DIR%" mkdir "%BIN_DIR%"
 if not exist "%HOST_DIR%" mkdir "%HOST_DIR%"
 
-echo [OK] Base files and directories verified.
-echo.
+:: Check core tools in bin\
+set "MISSING_TOOLS=0"
+if not exist "%BIN_DIR%\yt-dlp.exe" set "MISSING_TOOLS=1"
+if not exist "%BIN_DIR%\ffmpeg.exe" set "MISSING_TOOLS=1"
 
-:: [2/5] Check and download external helper tools to bin/
-echo [2/5] Checking external tools in bin directory...
-
-:: 2-1: yt-dlp.exe
-if exist "%BIN_DIR%\yt-dlp.exe" (
-    echo   * yt-dlp.exe: Found in bin\
+if "!MISSING_TOOLS!"=="1" (
+    echo [WARNING] Some core tools were not found in bin\.
+    echo           Please make sure yt-dlp.exe and ffmpeg.exe exist in bin\.
 ) else (
-    echo   * yt-dlp.exe: Not found. Downloading from official GitHub release...
-    curl.exe -fL --progress-bar -o "%BIN_DIR%\yt-dlp.exe" "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
-    if exist "%BIN_DIR%\yt-dlp.exe" (
-        echo     [OK] yt-dlp.exe installed successfully.
-    ) else (
-        echo     [WARNING] Failed to download yt-dlp.exe. Please place it manually in bin\.
-    )
+    echo   [OK] Core tools verified in bin\.
 )
-
-:: 2-2: ffmpeg.exe and ffprobe.exe
-set "NEED_FFMPEG=0"
-if not exist "%BIN_DIR%\ffmpeg.exe" set "NEED_FFMPEG=1"
-if not exist "%BIN_DIR%\ffprobe.exe" set "NEED_FFMPEG=1"
-
-if "!NEED_FFMPEG!"=="0" (
-    echo   * ffmpeg.exe and ffprobe.exe: Found in bin\
-) else (
-    echo   * ffmpeg / ffprobe: Missing. Downloading release package...
-    if not exist "%TEMP_DIR%" mkdir "%TEMP_DIR%"
-    set "FFMPEG_ZIP=%TEMP_DIR%\ffmpeg.zip"
-    curl.exe -fL --progress-bar -o "!FFMPEG_ZIP!" "https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
-    if exist "!FFMPEG_ZIP!" (
-        echo     Extracting ffmpeg and ffprobe...
-        where tar.exe >nul 2>&1
-        if !errorlevel! equ 0 (
-            tar.exe -xf "!FFMPEG_ZIP!" -C "%TEMP_DIR%"
-        ) else (
-            powershell -NoProfile -Command "Expand-Archive -Path '!FFMPEG_ZIP!' -DestinationPath '%TEMP_DIR%' -Force"
-        )
-        for /r "%TEMP_DIR%" %%f in (ffmpeg.exe ffprobe.exe) do (
-            if exist "%%f" copy /y "%%f" "%BIN_DIR%\" >nul
-        )
-        if exist "%BIN_DIR%\ffmpeg.exe" (
-            echo     [OK] ffmpeg.exe and ffprobe.exe installed successfully.
-        ) else (
-            echo     [WARNING] Could not extract ffmpeg.exe. Please place it manually in bin\.
-        )
-        del /f /q "!FFMPEG_ZIP!" >nul 2>&1
-    ) else (
-        echo     [WARNING] Failed to download ffmpeg archive. Please place ffmpeg.exe in bin\.
-    )
-)
-
-:: 2-3: AtomicParsley.exe
-if exist "%BIN_DIR%\AtomicParsley.exe" (
-    echo   * AtomicParsley.exe: Found in bin\
-) else (
-    echo   * AtomicParsley.exe: Not found. Downloading release package...
-    if not exist "%TEMP_DIR%" mkdir "%TEMP_DIR%"
-    set "AP_ZIP=%TEMP_DIR%\atomicparsley.zip"
-    curl.exe -fL --progress-bar -o "!AP_ZIP!" "https://github.com/wez/atomicparsley/releases/latest/download/AtomicParsleyWindows.zip"
-    if exist "!AP_ZIP!" (
-        echo     Extracting AtomicParsley.exe...
-        where tar.exe >nul 2>&1
-        if !errorlevel! equ 0 (
-            tar.exe -xf "!AP_ZIP!" -C "%TEMP_DIR%"
-        ) else (
-            powershell -NoProfile -Command "Expand-Archive -Path '!AP_ZIP!' -DestinationPath '%TEMP_DIR%' -Force"
-        )
-        for /r "%TEMP_DIR%" %%f in (AtomicParsley.exe) do (
-            if exist "%%f" copy /y "%%f" "%BIN_DIR%\" >nul
-        )
-        if exist "%BIN_DIR%\AtomicParsley.exe" (
-            echo     [OK] AtomicParsley.exe installed successfully.
-        ) else (
-            echo     [WARNING] Could not extract AtomicParsley.exe.
-        )
-        del /f /q "!AP_ZIP!" >nul 2>&1
-    ) else (
-        echo     [WARNING] Failed to download AtomicParsley.
-    )
-)
-
-:: Clean up temporary directory if exists
-if exist "%TEMP_DIR%" rmdir /s /q "%TEMP_DIR%" >nul 2>&1
-
-echo.
-echo [OK] All required helper tools in bin\ are verified.
 echo.
 
-:: [3/5] Extension ID setup
-echo [3/5] Setting up Extension ID...
-echo   * Extension ID: !CALCULATED_ID!
-echo.
-
-:: [4/5] Generate Native Messaging Host Manifest
-echo [4/5] Generating host manifest...
+:: [2/4] Generate Native Messaging Host Manifest
+echo [2/4] Generating native messaging host manifest...
 set "ESCAPED_EXE_PATH=%EXE_PATH:\=\\%"
 
 (
@@ -153,18 +69,18 @@ set "ESCAPED_EXE_PATH=%EXE_PATH:\=\\%"
     echo }
 ) > "%MANIFEST_PATH%"
 
-echo [OK] Manifest created at: %MANIFEST_PATH%
+echo   [OK] Manifest created at: %MANIFEST_PATH%
 echo.
 
-:: [5/5] Register to Web Browsers
-echo [5/5] Registering Native Messaging Host to browsers...
+:: [3/4] Register Native Messaging Host to Web Browsers
+echo [3/4] Registering host to web browsers...
 
 :: Google Chrome
 reg add "HKCU\Software\Google\Chrome\NativeMessagingHosts\com.msdlp.downloader" /ve /t REG_SZ /d "%MANIFEST_PATH%" /f >nul 2>&1
 if !errorlevel! equ 0 (
     echo   * Google Chrome: Registered
 ) else (
-    echo   * Google Chrome: Failed or skipped
+    echo   * Google Chrome: Skipped
 )
 
 :: Microsoft Edge
@@ -173,7 +89,7 @@ reg add "HKCU\Software\Microsoft\Edge Dev\NativeMessagingHosts\com.msdlp.downloa
 if !errorlevel! equ 0 (
     echo   * Microsoft Edge: Registered
 ) else (
-    echo   * Microsoft Edge: Failed or skipped
+    echo   * Microsoft Edge: Skipped
 )
 
 :: Brave Browser
@@ -191,10 +107,11 @@ if !errorlevel! equ 0 (
 ) else (
     echo   * Perplexity Comet: Skipped
 )
-
 echo.
+
+:: [4/4] Extension Load Guide
 echo ===================================================
-echo   Setup completed successfully.
+echo   Setup completed successfully!
 echo ===================================================
 echo.
 echo Next steps to use ms-dlp in your browser:
@@ -203,17 +120,14 @@ echo      Chrome: chrome://extensions
 echo      Edge  : edge://extensions
 echo      Brave : brave://extensions
 echo.
-echo 2. Turn ON "Developer mode" (toggle in top-right corner).
+echo 2. Enable "Developer mode" (toggle in top-right corner).
 echo.
 echo 3. Click "Load unpacked" and select the extension folder:
 echo      Folder: !EXT_DIR!
-echo    (The extension folder is now opening in Explorer...)
 echo.
 echo ===================================================
 echo.
 
-:: Open extension directory in Explorer for user convenience
 explorer.exe "%EXT_DIR%"
-
 pause
 endlocal

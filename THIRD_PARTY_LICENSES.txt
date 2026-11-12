@@ -1,0 +1,27 @@
+ms-dlp - Third-Party Software Licenses & Notices
+=================================================
+
+This distribution bundles or utilizes the following third-party software components:
+
+1. FFmpeg
+---------
+- License: GNU General Public License version 3 (GPLv3)
+- Copyright: (c) 2000-2026 the FFmpeg developers
+- Distribution binary: https://github.com/yt-dlp/FFmpeg-Builds
+- Source Code: https://ffmpeg.org/
+
+2. yt-dlp
+---------
+- License: The Unlicense (Public Domain)
+- Project Website: https://github.com/yt-dlp/yt-dlp
+
+3. AtomicParsley
+----------------
+- License: GNU General Public License version 2 (GPLv2)
+- Project Website: https://github.com/wez/atomicparsley
+
+4. ms-dlp (Application Core)
+----------------------------
+- License: MIT License
+- Copyright: (c) 2026 LunaFleuret
+- Repository: https://github.com/LunaFleuret/ms-dlp
