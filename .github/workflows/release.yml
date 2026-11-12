@@ -72,8 +72,8 @@ jobs:
           Copy-Item "download.bat" -Destination "$pkgDir\download.bat" -Force
           Copy-Item "download_playlist.bat" -Destination "$pkgDir\download_playlist.bat" -Force
           Copy-Item "README.md" -Destination "$pkgDir\README.md" -Force
-          Copy-Item "LICENSE" -Destination "$pkgDir\LICENSE" -Force
-          Copy-Item "THIRD_PARTY_LICENSES.txt" -Destination "$pkgDir\THIRD_PARTY_LICENSES.txt" -Force
+          if (Test-Path "LICENSE") { Copy-Item "LICENSE" -Destination "$pkgDir\LICENSE" -Force }
+          if (Test-Path "THIRD_PARTY_LICENSES.txt") { Copy-Item "THIRD_PARTY_LICENSES.txt" -Destination "$pkgDir\THIRD_PARTY_LICENSES.txt" -Force }
 
           $zipNameWithTag = "ms-dlp-$tag-windows-x64.zip"
           $zipNameFixed = "ms-dlp-windows-x64.zip"
